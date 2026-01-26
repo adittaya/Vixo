@@ -11,24 +11,34 @@ export const customerCareAI = {
    */
   async *getResponseStream(message: string) {
     try {
+      // Check if API key is available
+      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+      if (!apiKey) {
+        console.error("OpenRouter API key is not set");
+        yield "API key is not configured. Please contact the administrator.";
+        return;
+      }
+
       // Use fetch to call OpenRouter API directly since the SDK might not work in browser
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY || ""}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+          'User-Agent': 'Vixo-App/1.0'
         },
         body: JSON.stringify({
           model: "tngtech/deepseek-r1t2-chimera:free",
           messages: [
             {
               "role": "system",
-              "content": `You are a customer care representative for VIXO investment platform. 
-              Your role is to assist users with their queries about investments, withdrawals, 
-              account management, and platform features. Be helpful, friendly, and professional. 
-              If a user asks about technical issues, guide them step-by-step. 
-              If they ask about investments, explain the benefits and risks clearly. 
-              If they need help with withdrawals, walk them through the process. 
+              "content": `You are a customer care representative for VIXO investment platform.
+              Your role is to assist users with their queries about investments, withdrawals,
+              account management, and platform features. Be helpful, friendly, and professional.
+              If a user asks about technical issues, guide them step-by-step.
+              If they ask about investments, explain the benefits and risks clearly.
+              If they need help with withdrawals, walk them through the process.
               Always prioritize user security and platform policies.`
             },
             {
@@ -41,6 +51,8 @@ export const customerCareAI = {
       });
 
       if (!response.ok) {
+        const errorMessage = await response.text();
+        console.error(`HTTP error! status: ${response.status}`, errorMessage);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -66,15 +78,22 @@ export const customerCareAI = {
             if (data === '[DONE]') {
               return;
             }
-            
+
             try {
               const parsed = JSON.parse(data);
+              if (parsed.error) {
+                console.error("API Error:", parsed.error);
+                yield `Error: ${parsed.error.message || 'API request failed'}`;
+                return;
+              }
+
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) {
                 yield content;
               }
             } catch (e) {
-              // Skip malformed JSON
+              // Skip malformed JSON but log the error
+              console.warn("Failed to parse SSE data:", e, line);
               continue;
             }
           }
@@ -82,7 +101,11 @@ export const customerCareAI = {
       }
     } catch (error) {
       console.error("Error in customer care AI:", error);
-      yield "I'm sorry, I'm having trouble connecting to the AI service. Please try again later.";
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        yield "Connection slow. Please check your internet connection and try again.";
+      } else {
+        yield "I'm sorry, I'm having trouble connecting to the AI service. Please try again later.";
+      }
     }
   },
 
