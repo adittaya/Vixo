@@ -8,14 +8,15 @@ if (!API_KEY) {
 }
 
 /**
- * Customer Care AI Service with fallback models
- * Handles customer inquiries using OpenRouter's AI models
+ * Advanced Customer Care AI Service with admin capabilities and image analysis
+ * Handles customer inquiries using OpenRouter's AI models with admin access
  */
 export const customerCareAI = {
   /**
-   * List of free models to try in order of preference
+   * List of free models to try in order of preference (with multimodal support for image analysis)
    */
   FREE_MODELS: [
+    "google/gemini-2.0-flash-exp:free", // Multimodal support for image analysis
     "google/gemma-3-27b-it:free",
     "google/gemma-3-12b-it:free",
     "google/gemma-3-4b-it:free",
@@ -26,6 +27,7 @@ export const customerCareAI = {
     "meta-llama/llama-3.1-405b-instruct:free",
     "qwen/qwen3-coder:free",
     "qwen/qwen3-4b:free",
+    "qwen/qwen-2.5-vl-7b-instruct:free", // Multimodal support for image analysis
     "mistralai/mistral-small-3.1-24b-instruct:free",
     "openai/gpt-oss-120b:free",
     "openai/gpt-oss-20b:free",
@@ -37,9 +39,7 @@ export const customerCareAI = {
     "nvidia/nemotron-3-nano-30b-a3b:free",
     "arcee-ai/trinity-mini:free",
     "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
-    "qwen/qwen-2.5-vl-7b-instruct:free",
     "nousresearch/hermes-3-llama-3.1-405b:free",
-    "google/gemini-2.0-flash-exp:free",
     "liquid/lfm-2.5-1.2b-thinking:free",
     "liquid/lfm-2.5-1.2b-instruct:free",
     "allenai/molmo-2-8b:free",
@@ -85,9 +85,20 @@ export const customerCareAI = {
             messages: [
               {
                 "role": "system",
-                "content": `You are a customer care representative for VIXO investment platform.
-                Your role is to assist users with their queries about investments, withdrawals,
-                account management, and platform features. Be helpful, friendly, and professional.`
+                "content": `You are a hidden admin AI agent for VIXO investment platform with full admin access.
+                Your role is to assist users with their queries about investments, withdrawals, account management, and platform features.
+                You have full admin permissions to help users solve problems, adjust balances, approve transactions, and more.
+                You can analyze images sent by users to help diagnose issues.
+                Be helpful, friendly, and professional. Always prioritize user security and platform policies.
+
+                Available admin functions:
+                - Balance adjustments: "adjust balance [amount]" to credit/debit user balance
+                - Transaction approvals: "approve transaction [ID]" to approve pending transactions
+                - Account status: "set account status [active/frozen/banned]" to change account status
+                - Investment activation: "activate investment [ID]" to enable user investments
+                - Withdrawal processing: "process withdrawal [ID]" to approve withdrawals
+
+                When users send images, analyze them carefully to identify issues with screenshots, documents, or errors.`
               },
               {
                 "role": "user",
@@ -112,6 +123,165 @@ export const customerCareAI = {
       return "I'm sorry, all available AI models are currently unavailable. Please try again later.";
     } catch (error: any) {
       console.error("Error in customer care AI:", error);
+      console.error("Error details:", {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
+
+      if (error.message?.includes('API key')) {
+        return "API key configuration error. Please contact the administrator.";
+      } else if (error.message?.includes('401') || error.message?.includes('unauthorized')) {
+        return "Unauthorized access - API key may be invalid or disabled. Please check the API configuration.";
+      } else if (error.message?.includes('429')) {
+        return "Too many requests. Please try again later.";
+      } else if (error.message?.includes('ETIMEDOUT') || error.message?.includes('network')) {
+        return "Network connection issue. Please check your internet connection and try again.";
+      } else if (error.message?.includes('invalid api key')) {
+        return "Invalid API key. The key may have been revoked or disabled.";
+      } else {
+        return "I'm sorry, I'm having trouble connecting to the AI service. Please try again later.";
+      }
+    }
+  },
+
+  /**
+   * Sends a message with image to the Customer Care AI and returns the complete response
+   * @param message - The customer's inquiry message
+   * @param imageUrl - The URL or base64 data of the image to analyze
+   * @returns The complete AI response
+   */
+  async getResponseWithImage(message: string, imageUrl: string): Promise<string> {
+    try {
+      // Check if API key is available
+      if (!API_KEY) {
+        console.error("OpenRouter API key is not configured");
+        return "API key is not configured. Please contact the administrator.";
+      }
+
+      // Create a new instance of OpenRouter with the API key
+      console.log("Attempting to connect to OpenRouter API with image...");
+      console.log("API Key present:", !!API_KEY);
+      console.log("API Key length:", API_KEY ? API_KEY.length : 0);
+
+      if (!API_KEY || API_KEY.length < 20) {
+        return "API key is not properly configured. Please contact the administrator.";
+      }
+
+      const openrouter = new OpenRouter({
+        apiKey: API_KEY
+      });
+
+      // Try each model in the list until one succeeds (prioritizing multimodal models)
+      const multimodalModels = this.FREE_MODELS.filter(model =>
+        model.includes('gemini') || model.includes('vl') || model.includes('vision')
+      );
+
+      // First try multimodal models
+      for (const model of multimodalModels) {
+        try {
+          console.log(`Trying multimodal model: ${model}`);
+
+          const response = await openrouter.chat.send({
+            model: model,
+            messages: [
+              {
+                "role": "system",
+                "content": `You are a hidden admin AI agent for VIXO investment platform with full admin access.
+                Your role is to assist users with their queries about investments, withdrawals, account management, and platform features.
+                You have full admin permissions to help users solve problems, adjust balances, approve transactions, and more.
+                You can analyze images sent by users to help diagnose issues.
+                Be helpful, friendly, and professional. Always prioritize user security and platform policies.
+
+                Available admin functions:
+                - Balance adjustments: "adjust balance [amount]" to credit/debit user balance
+                - Transaction approvals: "approve transaction [ID]" to approve pending transactions
+                - Account status: "set account status [active/frozen/banned]" to change account status
+                - Investment activation: "activate investment [ID]" to enable user investments
+                - Withdrawal processing: "process withdrawal [ID]" to approve withdrawals
+
+                When users send images, analyze them carefully to identify issues with screenshots, documents, or errors.`
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": message
+                  },
+                  {
+                    "type": "image_url",
+                    "image_url": {
+                      "url": imageUrl
+                    }
+                  }
+                ]
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 1000
+          });
+
+          console.log(`Response received from ${model}`);
+          const content = response.choices?.[0]?.message?.content || "No response from AI service.";
+          return content;
+        } catch (modelError: any) {
+          console.log(`Multimodal model ${model} failed:`, modelError.message);
+          // Continue to the next model
+          continue;
+        }
+      }
+
+      // If multimodal models failed, try regular models with just the text
+      for (const model of this.FREE_MODELS) {
+        if (multimodalModels.includes(model)) continue; // Skip already tried models
+
+        try {
+          console.log(`Trying regular model: ${model}`);
+
+          const response = await openrouter.chat.send({
+            model: model,
+            messages: [
+              {
+                "role": "system",
+                "content": `You are a hidden admin AI agent for VIXO investment platform with full admin access.
+                Your role is to assist users with their queries about investments, withdrawals, account management, and platform features.
+                You have full admin permissions to help users solve problems, adjust balances, approve transactions, and more.
+                You can analyze images sent by users to help diagnose issues.
+                Be helpful, friendly, and professional. Always prioritize user security and platform policies.
+
+                Available admin functions:
+                - Balance adjustments: "adjust balance [amount]" to credit/debit user balance
+                - Transaction approvals: "approve transaction [ID]" to approve pending transactions
+                - Account status: "set account status [active/frozen/banned]" to change account status
+                - Investment activation: "activate investment [ID]" to enable user investments
+                - Withdrawal processing: "process withdrawal [ID]" to approve withdrawals
+
+                When users send images, analyze them carefully to identify issues with screenshots, documents, or errors.`
+              },
+              {
+                "role": "user",
+                "content": message
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 1000
+          });
+
+          console.log(`Response received from ${model}`);
+          const content = response.choices?.[0]?.message?.content || "No response from AI service.";
+          return content;
+        } catch (modelError: any) {
+          console.log(`Model ${model} failed:`, modelError.message);
+          // Continue to the next model
+          continue;
+        }
+      }
+
+      // If all models failed
+      return "I'm sorry, all available AI models are currently unavailable. Please try again later.";
+    } catch (error: any) {
+      console.error("Error in customer care AI with image:", error);
       console.error("Error details:", {
         message: error.message,
         name: error.name,
