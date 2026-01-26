@@ -8,10 +8,47 @@ if (!API_KEY) {
 }
 
 /**
- * Minimal Customer Care AI Service
+ * Customer Care AI Service with fallback models
  * Handles customer inquiries using OpenRouter's AI models
  */
 export const customerCareAI = {
+  /**
+   * List of free models to try in order of preference
+   */
+  FREE_MODELS: [
+    "google/gemma-3-27b-it:free",
+    "google/gemma-3-12b-it:free",
+    "google/gemma-3-4b-it:free",
+    "google/gemma-3n-e4b-it:free",
+    "google/gemma-3n-e2b-it:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "meta-llama/llama-3.1-405b-instruct:free",
+    "qwen/qwen3-coder:free",
+    "qwen/qwen3-4b:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+    "openai/gpt-oss-120b:free",
+    "openai/gpt-oss-20b:free",
+    "z-ai/glm-4.5-air:free",
+    "tngtech/deepseek-r1t2-chimera:free",
+    "tngtech/deepseek-r1t-chimera:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "nvidia/nemotron-nano-9b-v2:free",
+    "nvidia/nemotron-3-nano-30b-a3b:free",
+    "arcee-ai/trinity-mini:free",
+    "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+    "qwen/qwen-2.5-vl-7b-instruct:free",
+    "nousresearch/hermes-3-llama-3.1-405b:free",
+    "google/gemini-2.0-flash-exp:free",
+    "liquid/lfm-2.5-1.2b-thinking:free",
+    "liquid/lfm-2.5-1.2b-instruct:free",
+    "allenai/molmo-2-8b:free",
+    "mistralai/devstral-2512:free",
+    "moonshotai/kimi-k2:free",
+    "qwen/qwen3-next-80b-a3b-instruct:free",
+    "deepseek/deepseek-r1-0528:free"
+  ],
+
   /**
    * Sends a message to the Customer Care AI and returns the complete response
    * @param message - The customer's inquiry message
@@ -38,29 +75,41 @@ export const customerCareAI = {
         apiKey: API_KEY
       });
 
-      console.log("OpenRouter client created, sending request...");
+      // Try each model in the list until one succeeds
+      for (const model of this.FREE_MODELS) {
+        try {
+          console.log(`Trying model: ${model}`);
 
-      const response = await openrouter.chat.send({
-        model: "google/gemma-3-27b-it:free",
-        messages: [
-          {
-            "role": "system",
-            "content": `You are a customer care representative for VIXO investment platform.
-            Your role is to assist users with their queries about investments, withdrawals,
-            account management, and platform features. Be helpful, friendly, and professional.`
-          },
-          {
-            "role": "user",
-            "content": message
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000
-      });
+          const response = await openrouter.chat.send({
+            model: model,
+            messages: [
+              {
+                "role": "system",
+                "content": `You are a customer care representative for VIXO investment platform.
+                Your role is to assist users with their queries about investments, withdrawals,
+                account management, and platform features. Be helpful, friendly, and professional.`
+              },
+              {
+                "role": "user",
+                "content": message
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 1000
+          });
 
-      console.log("Response received from API");
-      const content = response.choices?.[0]?.message?.content || "No response from AI service.";
-      return content;
+          console.log(`Response received from ${model}`);
+          const content = response.choices?.[0]?.message?.content || "No response from AI service.";
+          return content;
+        } catch (modelError: any) {
+          console.log(`Model ${model} failed:`, modelError.message);
+          // Continue to the next model
+          continue;
+        }
+      }
+
+      // If all models failed
+      return "I'm sorry, all available AI models are currently unavailable. Please try again later.";
     } catch (error: any) {
       console.error("Error in customer care AI:", error);
       console.error("Error details:", {
