@@ -1,9 +1,3 @@
-import { OpenRouter } from "@openrouter/sdk";
-
-const openrouter = new OpenRouter({
-  apiKey: "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"
-});
-
 /**
  * Customer Care AI Service
  * Handles customer inquiries using OpenRouter's AI models
@@ -16,31 +10,73 @@ export const customerCareAI = {
    */
   async *getResponseStream(message: string) {
     try {
-      const stream = await openrouter.chat.send({
-        model: "tngtech/deepseek-r1t2-chimera:free",
-        messages: [
-          {
-            "role": "system",
-            "content": `You are a customer care representative for VIXO investment platform. 
-            Your role is to assist users with their queries about investments, withdrawals, 
-            account management, and platform features. Be helpful, friendly, and professional. 
-            If a user asks about technical issues, guide them step-by-step. 
-            If they ask about investments, explain the benefits and risks clearly. 
-            If they need help with withdrawals, walk them through the process. 
-            Always prioritize user security and platform policies.`
-          },
-          {
-            "role": "user",
-            "content": message
-          }
-        ],
-        stream: true
+      // Use fetch to call OpenRouter API directly since the SDK might not work in browser
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY || "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"}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: "tngtech/deepseek-r1t2-chimera:free",
+          messages: [
+            {
+              "role": "system",
+              "content": `You are a customer care representative for VIXO investment platform. 
+              Your role is to assist users with their queries about investments, withdrawals, 
+              account management, and platform features. Be helpful, friendly, and professional. 
+              If a user asks about technical issues, guide them step-by-step. 
+              If they ask about investments, explain the benefits and risks clearly. 
+              If they need help with withdrawals, walk them through the process. 
+              Always prioritize user security and platform policies.`
+            },
+            {
+              "role": "user",
+              "content": message
+            }
+          ],
+          stream: true
+        })
       });
 
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          yield content;
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error('ReadableStream not supported in this browser.');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep last incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6); // Remove 'data: ' prefix
+            if (data === '[DONE]') {
+              return;
+            }
+            
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                yield content;
+              }
+            } catch (e) {
+              // Skip malformed JSON
+              continue;
+            }
+          }
         }
       }
     } catch (error) {
@@ -69,21 +105,3 @@ export const customerCareAI = {
     }
   }
 };
-
-// Example usage:
-/*
-(async () => {
-  const message = "What is the meaning of life?";
-  
-  // Streaming response
-  console.log("Streaming response:");
-  for await (const chunk of customerCareAI.getResponseStream(message)) {
-    process.stdout.write(chunk);
-  }
-  
-  // Or get complete response
-  console.log("\n\nComplete response:");
-  const response = await customerCareAI.getResponse(message);
-  console.log(response);
-})();
-*/
