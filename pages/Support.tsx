@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, PureComponent } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
 import { customerCareAI } from '../services/customerCareAI';
@@ -28,7 +28,7 @@ const Support: React.FC<Props> = ({ user }) => {
   let clickSequence: string[] = [];
   let sequenceTimeout: NodeJS.Timeout | null = null;
 
-  const refreshMessages = () => {
+  const refreshMessages = React.useCallback(() => {
     const store = getStore();
     const userMessages = (store.supportMessages || []).filter(m => m.userId === user.id);
     // Only update if there are new messages from other sources
@@ -40,17 +40,18 @@ const Support: React.FC<Props> = ({ user }) => {
       }
       return prev;
     });
-  };
+  }, [user.id]);
 
   useEffect(() => {
     refreshMessages();
-    const interval = setInterval(refreshMessages, 5000);
+    const interval = setInterval(refreshMessages, 10000); // Increased interval to reduce frequency
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshMessages]);
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      // Use instant scrolling instead of smooth for better performance
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
 
@@ -68,13 +69,12 @@ const Support: React.FC<Props> = ({ user }) => {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = React.useCallback(async () => {
     if (!inputText.trim() && !inputImage) return;
 
     setIsSending(true);
     const store = getStore();
     const userMsgText = inputText || "Sent an attachment.";
-    const currentImg = inputImage;
 
     // Create user message
     const newUserMessage: SupportMessage = {
@@ -82,7 +82,7 @@ const Support: React.FC<Props> = ({ user }) => {
       userId: user.id,
       sender: 'user',
       text: userMsgText,
-      image: currentImg || undefined,
+      image: inputImage || undefined,
       timestamp: Date.now()
     };
 
@@ -99,16 +99,16 @@ const Support: React.FC<Props> = ({ user }) => {
 
     // Process AI response separately
     try {
-      await triggerAIResponse(userMsgText, updatedStoreMessages, currentImg);
+      await triggerAIResponse(userMsgText);
     } catch (error) {
       console.error("Error processing AI response:", error);
     } finally {
       setIsSending(false);
     }
-  };
+  }, [inputText, inputImage, user.id, triggerAIResponse]);
 
   // Function to handle hidden trigger sequence
-  const handleHeaderClick = () => {
+  const handleHeaderClick = React.useCallback(() => {
     // Reset sequence if it's been more than 2 seconds since last click
     if (sequenceTimeout) {
       clearTimeout(sequenceTimeout);
@@ -123,25 +123,29 @@ const Support: React.FC<Props> = ({ user }) => {
       const recentSequence = clickSequence.slice(-5);
       if (recentSequence.every((val) => val === 'header')) {
         // Toggle hidden AI agent
-        setUsingHiddenAI(!usingHiddenAI);
+        setUsingHiddenAI(prev => {
+          const newValue = !prev;
+
+          // Add a message to indicate the mode change
+          const modeToggleMessage: SupportMessage = {
+            id: `mode-toggle-${Date.now()}`,
+            userId: user.id,
+            sender: 'admin',
+            text: newValue
+              ? 'Hidden Admin AI Agent activated. Full admin access enabled.'
+              : 'Switching back to regular support mode...',
+            timestamp: Date.now()
+          };
+
+          const store = getStore();
+          const updatedStoreMessages = [...(store.supportMessages || []), modeToggleMessage];
+          saveStore({ supportMessages: updatedStoreMessages });
+          setMessages(prevMessages => [...prevMessages, modeToggleMessage].sort((a, b) => a.timestamp - b.timestamp));
+
+          return newValue;
+        });
+
         clickSequence = []; // Reset sequence
-
-        // Add a message to indicate the mode change
-        const modeToggleMessage: SupportMessage = {
-          id: `mode-toggle-${Date.now()}`,
-          userId: user.id,
-          sender: 'admin',
-          text: usingHiddenAI
-            ? 'Switching back to regular support mode...'
-            : 'Hidden Admin AI Agent activated. Full admin access enabled.',
-          timestamp: Date.now()
-        };
-
-        const store = getStore();
-        const updatedStoreMessages = [...(store.supportMessages || []), modeToggleMessage];
-        saveStore({ supportMessages: updatedStoreMessages });
-        setMessages(prev => [...prev, modeToggleMessage].sort((a, b) => a.timestamp - b.timestamp));
-
         return;
       }
     }
@@ -150,7 +154,7 @@ const Support: React.FC<Props> = ({ user }) => {
     sequenceTimeout = setTimeout(() => {
       clickSequence = [];
     }, 2000);
-  };
+  }, [user.id]);
 
   const executeAgentAction = async (call: any) => {
     const store = getStore();
@@ -338,7 +342,7 @@ const Support: React.FC<Props> = ({ user }) => {
     }
   };
 
-  const triggerAIResponse = async (lastUserText: string, currentHistory: SupportMessage[], image?: string) => {
+  const triggerAIResponse = React.useCallback(async (lastUserText: string) => {
     setIsTyping(true);
 
     let aiResponse;
@@ -377,22 +381,22 @@ const Support: React.FC<Props> = ({ user }) => {
     await saveStore({ supportMessages: updatedStoreMessages });
 
     setIsTyping(false);
-  };
+  }, [user.id, usingHiddenAI]);
 
-  const renderMessageText = (text: string) => {
+  const renderMessageText = React.useMemo(() => (text: string) => {
     const actionRegex = /\[ACTION:(RECHARGE|WITHDRAW|HOME)\]/g;
     const cleanText = text.replace(actionRegex, '').trim();
     const actions = Array.from(text.matchAll(actionRegex)).map(m => m[1]);
-    
+
     return (
       <div className="space-y-4">
         <p className="whitespace-pre-wrap leading-relaxed text-[15px] text-[#2c3e50] font-medium">{cleanText}</p>
         {actions.length > 0 && (
           <div className="flex flex-col gap-2 pt-2">
             {actions.map((act, i) => (
-              <button 
-                key={i} 
-                onClick={() => navigate(`/${act.toLowerCase()}`)} 
+              <button
+                key={i}
+                onClick={() => navigate(`/${act.toLowerCase()}`)}
                 className="w-full bg-[#e6fcf5] hover:bg-[#d3f9ed] text-[#00D094] py-3.5 px-6 rounded-2xl flex items-center justify-between transition-all active:scale-[0.98] border border-[#d3f9ed]"
               >
                 <span className="text-[12px] font-black uppercase tracking-wider">GO TO {act}</span>
@@ -403,7 +407,7 @@ const Support: React.FC<Props> = ({ user }) => {
         )}
       </div>
     );
-  };
+  }, [navigate]);
 
   return (
     <div className="bg-[#f8faf9] flex flex-col h-screen max-h-screen overflow-hidden">
@@ -451,31 +455,34 @@ const Support: React.FC<Props> = ({ user }) => {
 
       {/* CHAT AREA */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 space-y-8 pt-8 no-scrollbar bg-[#f8faf9] pb-32">
-        {messages.map((msg) => (
-          <div 
-            key={msg.id} 
-            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} w-full`}
-          >
-            <div className="max-w-[85%] space-y-1">
-               {msg.sender === 'user' ? (
-                 /* USER BUBBLE: GREEN AS PER SCREENSHOT */
-                 <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#00D094] text-white px-6 py-4 rounded-[2rem] rounded-tr-none shadow-lg relative">
-                    {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-2 border border-white/20 max-h-60 object-cover" alt="Attachment" />}
-                    <p className="text-[14px] font-bold leading-relaxed">{msg.text}</p>
-                 </MotionDiv>
-               ) : (
-                 /* ADMIN BUBBLE: LIGHT GRAY AS PER SCREENSHOT */
-                 <MotionDiv initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#f1f5f9] text-[#2c3e50] px-6 py-6 rounded-[2.5rem] rounded-tl-none shadow-sm border border-slate-100 relative">
-                    {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-4 border border-slate-200 max-h-60 object-cover" alt="Attachment" />}
-                    {renderMessageText(msg.text)}
-                 </MotionDiv>
-               )}
-               <p className={`text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1.5 ${msg.sender === 'user' ? 'text-right mr-2' : 'text-left ml-2'}`}>
-                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-               </p>
+        {messages.map((msg) => {
+          const isUser = msg.sender === 'user';
+          return (
+            <div
+              key={msg.id}
+              className={`flex ${isUser ? 'justify-end' : 'justify-start'} w-full`}
+            >
+              <div className="max-w-[85%] space-y-1">
+                 {isUser ? (
+                   /* USER BUBBLE: GREEN AS PER SCREENSHOT */
+                   <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#00D094] text-white px-6 py-4 rounded-[2rem] rounded-tr-none shadow-lg relative">
+                        {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-2 border border-white/20 max-h-60 object-cover" alt="Attachment" />}
+                        <p className="text-[14px] font-bold leading-relaxed">{msg.text}</p>
+                     </MotionDiv>
+                   ) : (
+                     /* ADMIN BUBBLE: LIGHT GRAY AS PER SCREENSHOT */
+                     <MotionDiv initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#f1f5f9] text-[#2c3e50] px-6 py-6 rounded-[2.5rem] rounded-tl-none shadow-sm border border-slate-100 relative">
+                        {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-4 border border-slate-200 max-h-60 object-cover" alt="Attachment" />}
+                        {renderMessageText(msg.text)}
+                     </MotionDiv>
+                   )}
+                 <p className={`text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1.5 ${isUser ? 'text-right mr-2' : 'text-left ml-2'}`}>
+                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                 </p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {isTyping && (
           <div className="flex justify-start">
