@@ -1,6 +1,6 @@
 import { OpenRouter } from "@openrouter/sdk";
 
-// Use environment variable for API key
+// Use environment variable for API key (never hardcode API keys in source code)
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 
 if (!API_KEY) {
@@ -8,7 +8,7 @@ if (!API_KEY) {
 }
 
 const openrouter = new OpenRouter({
-  apiKey: API_KEY || ""
+  apiKey: API_KEY || ""  // Empty string fallback if env var is not set
 });
 
 /**
@@ -23,17 +23,24 @@ export const customerCareAI = {
    */
   async *getResponseStream(message: string) {
     try {
+      // Check if API key is available
+      if (!API_KEY) {
+        console.error("OpenRouter API key is not configured");
+        yield "API key is not configured. Please contact the administrator.";
+        return;
+      }
+
       const stream = await openrouter.chat.send({
         model: "qwen/qwen3-coder:free",
         messages: [
           {
             "role": "system",
-            "content": `You are a customer care representative for VIXO investment platform. 
-            Your role is to assist users with their queries about investments, withdrawals, 
-            account management, and platform features. Be helpful, friendly, and professional. 
-            If a user asks about technical issues, guide them step-by-step. 
-            If they ask about investments, explain the benefits and risks clearly. 
-            If they need help with withdrawals, walk them through the process. 
+            "content": `You are a customer care representative for VIXO investment platform.
+            Your role is to assist users with their queries about investments, withdrawals,
+            account management, and platform features. Be helpful, friendly, and professional.
+            If a user asks about technical issues, guide them step-by-step.
+            If they ask about investments, explain the benefits and risks clearly.
+            If they need help with withdrawals, walk them through the process.
             Always prioritize user security and platform policies.`
           },
           {
@@ -52,7 +59,11 @@ export const customerCareAI = {
       }
     } catch (error) {
       console.error("Error in customer care AI:", error);
-      yield "I'm sorry, I'm having trouble connecting to the AI service. Please try again later.";
+      if (error instanceof Error && error.message.includes('API key')) {
+        yield "API key configuration error. Please contact the administrator.";
+      } else {
+        yield "I'm sorry, I'm having trouble connecting to the AI service. Please try again later.";
+      }
     }
   },
 
@@ -63,12 +74,12 @@ export const customerCareAI = {
    */
   async getResponse(message: string): Promise<string> {
     let fullResponse = '';
-    
+
     try {
       for await (const chunk of this.getResponseStream(message)) {
         fullResponse += chunk;
       }
-      
+
       return fullResponse;
     } catch (error) {
       console.error("Error getting customer care response:", error);
@@ -81,13 +92,13 @@ export const customerCareAI = {
 /*
 (async () => {
   const message = "What is the meaning of life?";
-  
+
   // Streaming response
   console.log("Streaming response:");
   for await (const chunk of customerCareAI.getResponseStream(message)) {
     process.stdout.write(chunk);
   }
-  
+
   // Or get complete response
   console.log("\n\nComplete response:");
   const response = await customerCareAI.getResponse(message);
