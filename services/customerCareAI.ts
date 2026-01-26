@@ -1,6 +1,7 @@
 /**
  * Customer Care AI Service
  * Handles customer inquiries using OpenRouter's AI models
+ * Note: Requires VITE_OPENROUTER_API_KEY environment variable to be set
  */
 export const customerCareAI = {
   /**
@@ -14,7 +15,7 @@ export const customerCareAI = {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY || "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"}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY || ""}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
