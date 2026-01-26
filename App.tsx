@@ -20,6 +20,7 @@ import PersonalInfo from './components/PersonalInfo';
 import AboutUs from './pages/AboutUs';
 import BalanceDetails from './pages/BalanceDetails';
 import Records from './pages/Records';
+import ChatView from './components/ChatView'; // Import the ChatView component
 import { Home as HomeIcon, Zap, Users, User as UserIcon, ShieldAlert, RefreshCw, MessageCircle, Share2 } from 'lucide-react';
 import { LOGO_IMAGE } from './constants';
 
@@ -131,6 +132,7 @@ const App: React.FC = () => {
               <Route path="/about-us" element={<AboutUs />} />
               <Route path="/balance-details" element={currentUser ? <BalanceDetails user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/records/:type" element={currentUser ? <Records user={currentUser} /> : <Navigate to="/login" />} />
+              <Route path="/chat" element={currentUser ? <ChatView /> : <Navigate to="/login" />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<Navigate to="/home" />} />
             </Routes>
@@ -149,17 +151,17 @@ const NavigationMenu: React.FC = () => {
   const navItems = [
     { label: 'Home', icon: HomeIcon, path: '/home' },
     { label: 'Earnings', icon: Zap, path: '/income' },
-    { label: 'Invite', icon: Share2, path: '/share' },
-    { label: 'My Team', icon: Users, path: '/team' },
+    { label: 'AI Assistant', icon: MessageCircle, path: '/chat' },
+    { label: 'Team', icon: Users, path: '/team' },
     { label: 'Account', icon: UserIcon, path: '/my' },
   ];
 
   return (
     <nav className="fixed bottom-0 w-full max-w-md bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center px-1 pt-3 pb-6 z-[99] shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
       {navItems.map((item) => (
-        <Link 
+        <Link
           key={item.path}
-          to={item.path} 
+          to={item.path}
           className={`flex-1 flex flex-col items-center gap-1.5 transition-all ${isActive(item.path) ? 'text-[#00D094]' : 'text-gray-300'}`}
         >
           <div className={`p-1.5 rounded-2xl transition-all ${isActive(item.path) ? 'bg-[#00D094]/10' : 'bg-transparent'}`}>
