@@ -26,9 +26,19 @@ export const customerCareAI = {
       }
 
       // Create a new instance of OpenRouter with the API key
+      console.log("Attempting to connect to OpenRouter API...");
+      console.log("API Key present:", !!API_KEY);
+      console.log("API Key length:", API_KEY ? API_KEY.length : 0);
+
+      if (!API_KEY || API_KEY.length < 20) {
+        return "API key is not properly configured. Please contact the administrator.";
+      }
+
       const openrouter = new OpenRouter({
         apiKey: API_KEY
       });
+
+      console.log("OpenRouter client created, sending request...");
 
       const response = await openrouter.chat.send({
         model: "qwen/qwen3-coder:free",
@@ -48,19 +58,27 @@ export const customerCareAI = {
         max_tokens: 1000
       });
 
+      console.log("Response received from API");
       const content = response.choices?.[0]?.message?.content || "No response from AI service.";
       return content;
     } catch (error: any) {
       console.error("Error in customer care AI:", error);
+      console.error("Error details:", {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
 
       if (error.message?.includes('API key')) {
         return "API key configuration error. Please contact the administrator.";
-      } else if (error.message?.includes('401')) {
-        return "Unauthorized access. Please check the API configuration.";
+      } else if (error.message?.includes('401') || error.message?.includes('unauthorized')) {
+        return "Unauthorized access - API key may be invalid or disabled. Please check the API configuration.";
       } else if (error.message?.includes('429')) {
         return "Too many requests. Please try again later.";
       } else if (error.message?.includes('ETIMEDOUT') || error.message?.includes('network')) {
         return "Network connection issue. Please check your internet connection and try again.";
+      } else if (error.message?.includes('invalid api key')) {
+        return "Invalid API key. The key may have been revoked or disabled.";
       } else {
         return "I'm sorry, I'm having trouble connecting to the AI service. Please try again later.";
       }
