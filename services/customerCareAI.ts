@@ -1,7 +1,14 @@
 import { OpenRouter } from "@openrouter/sdk";
 
+// Use environment variable for API key
+const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+
+if (!API_KEY) {
+  console.error("OpenRouter API key is not set. Please configure VITE_OPENROUTER_API_KEY in your environment variables.");
+}
+
 const openrouter = new OpenRouter({
-  apiKey: "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"
+  apiKey: API_KEY || ""
 });
 
 /**
