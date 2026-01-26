@@ -160,6 +160,7 @@ const App: React.FC = () => {
               <Route path="/home" element={currentUser ? <Home user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/income" element={currentUser ? <Income user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/share" element={currentUser ? <Share user={currentUser} /> : <Navigate to="/login" />} />
+              <Route path="/team" element={currentUser ? <Team user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/community" element={currentUser ? <Community user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/support" element={currentUser ? <Support user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/my" element={currentUser ? <My user={currentUser} onLogout={handleLogout} /> : <Navigate to="/login" />} />
@@ -193,6 +194,7 @@ const NavigationMenu: React.FC = ({ onNavClick }: { onNavClick: (path: string) =
   const navItems = [
     { label: 'Home', icon: HomeIcon, path: '/home' },
     { label: 'Earnings', icon: Zap, path: '/income' },
+    { label: 'Team', icon: Users, path: '/team' },
     { label: 'Invite', icon: Share2, path: '/share' },
     { label: 'Account', icon: UserIcon, path: '/my' },
   ];
