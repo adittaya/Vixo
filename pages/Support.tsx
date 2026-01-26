@@ -31,7 +31,15 @@ const Support: React.FC<Props> = ({ user }) => {
   const refreshMessages = () => {
     const store = getStore();
     const userMessages = (store.supportMessages || []).filter(m => m.userId === user.id);
-    setMessages(userMessages.sort((a, b) => a.timestamp - b.timestamp));
+    // Only update if there are new messages from other sources
+    setMessages(prev => {
+      const prevIds = new Set(prev.map(m => m.id));
+      const newMessages = userMessages.filter(m => !prevIds.has(m.id));
+      if (newMessages.length > 0) {
+        return [...prev, ...newMessages].sort((a, b) => a.timestamp - b.timestamp);
+      }
+      return prev;
+    });
   };
 
   useEffect(() => {
@@ -50,17 +58,25 @@ const Support: React.FC<Props> = ({ user }) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setInputImage(reader.result as string);
+      reader.onloadend = () => {
+        setInputImage(reader.result as string);
+      };
+      reader.onerror = () => {
+        console.error("Error reading image file");
+      };
       reader.readAsDataURL(file);
     }
   };
 
   const handleSend = async () => {
     if (!inputText.trim() && !inputImage) return;
+
     setIsSending(true);
     const store = getStore();
     const userMsgText = inputText || "Sent an attachment.";
     const currentImg = inputImage;
+
+    // Create user message
     const newUserMessage: SupportMessage = {
       id: `msg-${Date.now()}`,
       userId: user.id,
@@ -69,13 +85,26 @@ const Support: React.FC<Props> = ({ user }) => {
       image: currentImg || undefined,
       timestamp: Date.now()
     };
+
+    // Update UI immediately for better responsiveness
+    setMessages(prev => [...prev, newUserMessage]);
+
+    // Save to store in background
     const updatedStoreMessages = [...(store.supportMessages || []), newUserMessage];
     await saveStore({ supportMessages: updatedStoreMessages });
+
+    // Clear inputs
     setInputText('');
     setInputImage('');
-    setIsSending(false);
-    refreshMessages();
-    triggerAIResponse(userMsgText, updatedStoreMessages, currentImg);
+
+    // Process AI response separately
+    try {
+      await triggerAIResponse(userMsgText, updatedStoreMessages, currentImg);
+    } catch (error) {
+      console.error("Error processing AI response:", error);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   // Function to handle hidden trigger sequence
@@ -111,7 +140,7 @@ const Support: React.FC<Props> = ({ user }) => {
         const store = getStore();
         const updatedStoreMessages = [...(store.supportMessages || []), modeToggleMessage];
         saveStore({ supportMessages: updatedStoreMessages });
-        setMessages(updatedStoreMessages.sort((a, b) => a.timestamp - b.timestamp));
+        setMessages(prev => [...prev, modeToggleMessage].sort((a, b) => a.timestamp - b.timestamp));
 
         return;
       }
@@ -310,23 +339,12 @@ const Support: React.FC<Props> = ({ user }) => {
   };
 
   const triggerAIResponse = async (lastUserText: string, currentHistory: SupportMessage[], image?: string) => {
-    await new Promise(r => setTimeout(r, 1500));
     setIsTyping(true);
 
     let aiResponse;
 
     // Use the customer care AI for all interactions
     try {
-      // Format the history for the customer care AI
-      const formattedHistory = currentHistory
-        .filter(m => m.userId === user.id)
-        .slice(-20)
-        .map(m => ({
-          role: m.sender === 'user' ? 'user' : 'model',
-          text: m.text,
-          timestamp: m.timestamp
-        }));
-
       // Get response from the customer care AI
       const response = await customerCareAI.getResponse(lastUserText);
 
@@ -351,9 +369,14 @@ const Support: React.FC<Props> = ({ user }) => {
       text: aiResponse.text || "I am checking your request. Please wait. [ACTION:HOME]",
       timestamp: Date.now()
     };
-    await saveStore({ supportMessages: [...(store.supportMessages || []), adminMessage] });
+
+    // Update UI immediately
+    setMessages(prev => [...prev, adminMessage]);
+
+    const updatedStoreMessages = [...(store.supportMessages || []), adminMessage];
+    await saveStore({ supportMessages: updatedStoreMessages });
+
     setIsTyping(false);
-    refreshMessages();
   };
 
   const renderMessageText = (text: string) => {
