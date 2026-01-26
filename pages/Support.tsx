@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
-import { generateSupportResponse } from '../services/gemini';
 import { customerCareAI } from '../services/customerCareAI';
 import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -316,48 +315,32 @@ const Support: React.FC<Props> = ({ user }) => {
 
     let aiResponse;
 
-    if (usingHiddenAI) {
-      // Use the hidden admin AI with full admin access
-      try {
-        // Format the history for the customer care AI
-        const formattedHistory = currentHistory
-          .filter(m => m.userId === user.id)
-          .slice(-20)
-          .map(m => ({
-            role: m.sender === 'user' ? 'user' : 'model',
-            text: m.text,
-            timestamp: m.timestamp
-          }));
-
-        // Get response from the hidden admin AI
-        const response = await customerCareAI.getResponse(lastUserText);
-
-        // Check if the response contains admin commands
-        if (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:')) {
-          const result = await executeAdminAction(response);
-          aiResponse = { text: result };
-        } else {
-          aiResponse = { text: response };
-        }
-      } catch (error) {
-        console.error("Error with hidden AI:", error);
-        aiResponse = { text: "Hidden Admin AI is temporarily unavailable. Switching back to regular support." };
-        setUsingHiddenAI(false);
-      }
-    } else {
-      // Use the regular support AI
-      const history = currentHistory
+    // Use the customer care AI for all interactions
+    try {
+      // Format the history for the customer care AI
+      const formattedHistory = currentHistory
         .filter(m => m.userId === user.id)
         .slice(-20)
-        .map(m => ({ role: m.sender === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+        .map(m => ({
+          role: m.sender === 'user' ? 'user' : 'model',
+          text: m.text,
+          timestamp: m.timestamp
+        }));
 
-      aiResponse = await generateSupportResponse(lastUserText, history, image);
+      // Get response from the customer care AI
+      const response = await customerCareAI.getResponse(lastUserText);
 
-      if (aiResponse.functionCalls) {
-        for (const call of aiResponse.functionCalls) {
-          await executeAgentAction(call);
-        }
+      // Check if the response contains admin commands (only when in hidden mode)
+      if (usingHiddenAI && (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:'))) {
+        const result = await executeAdminAction(response);
+        aiResponse = { text: result };
+      } else {
+        aiResponse = { text: response };
       }
+    } catch (error) {
+      console.error("Error with customer care AI:", error);
+      aiResponse = { text: "Customer care AI is temporarily unavailable. Please try again later." };
+      if (usingHiddenAI) setUsingHiddenAI(false);
     }
 
     const store = getStore();

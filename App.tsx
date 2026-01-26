@@ -20,7 +20,6 @@ import PersonalInfo from './components/PersonalInfo';
 import AboutUs from './pages/AboutUs';
 import BalanceDetails from './pages/BalanceDetails';
 import Records from './pages/Records';
-import ChatView from './components/ChatView'; // Import the ChatView component
 import HiddenCustomerCare from './components/HiddenCustomerCare';
 import { Home as HomeIcon, Zap, Users, User as UserIcon, ShieldAlert, RefreshCw, MessageCircle, Share2 } from 'lucide-react';
 import { LOGO_IMAGE } from './constants';
