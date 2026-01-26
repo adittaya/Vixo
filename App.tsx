@@ -159,9 +159,9 @@ const NavigationMenu: React.FC = () => {
   return (
     <nav className="fixed bottom-0 w-full max-w-md bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center px-1 pt-3 pb-6 z-[99] shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
       {navItems.map((item) => (
-        <Link 
+        <Link
           key={item.path}
-          to={item.path} 
+          to={item.path}
           className={`flex-1 flex flex-col items-center gap-1.5 transition-all ${isActive(item.path) ? 'text-[#00D094]' : 'text-gray-300'}`}
         >
           <div className={`p-1.5 rounded-2xl transition-all ${isActive(item.path) ? 'bg-[#00D094]/10' : 'bg-transparent'}`}>
