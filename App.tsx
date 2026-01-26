@@ -21,6 +21,7 @@ import AboutUs from './pages/AboutUs';
 import BalanceDetails from './pages/BalanceDetails';
 import Records from './pages/Records';
 import ChatView from './components/ChatView'; // Import the ChatView component
+import HiddenCustomerCare from './components/HiddenCustomerCare';
 import { Home as HomeIcon, Zap, Users, User as UserIcon, ShieldAlert, RefreshCw, MessageCircle, Share2 } from 'lucide-react';
 import { LOGO_IMAGE } from './constants';
 
@@ -42,10 +43,47 @@ export const useApp = () => {
   return context;
 };
 
+// Hidden Customer Care Trigger Sequence
+let clickSequence: string[] = [];
+let sequenceTimeout: NodeJS.Timeout | null = null;
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [admin, setAdmin] = useState<AdminSettings | null>(null);
   const [isSyncing, setIsSyncing] = useState(true);
+  const [isHiddenCustomerCareOpen, setIsHiddenCustomerCareOpen] = useState(false);
+
+  // Function to handle hidden trigger sequence
+  const handleNavClick = (path: string) => {
+    // Reset sequence if it's been more than 2 seconds since last click
+    if (sequenceTimeout) {
+      clearTimeout(sequenceTimeout);
+    }
+
+    // Add current path to sequence
+    clickSequence.push(path);
+
+    // Check if the sequence matches the hidden trigger pattern
+    // For example: clicking Home -> Earnings -> Invite -> Account in sequence
+    const triggerSequence = ['/home', '/income', '/share', '/my'];
+    if (clickSequence.length >= triggerSequence.length) {
+      const recentSequence = clickSequence.slice(-triggerSequence.length);
+      if (recentSequence.every((val, idx) => val === triggerSequence[idx])) {
+        // Trigger hidden customer care
+        setIsHiddenCustomerCareOpen(true);
+        clickSequence = []; // Reset sequence
+        return;
+      }
+    }
+
+    // Clear sequence after 2 seconds of inactivity
+    sequenceTimeout = setTimeout(() => {
+      clickSequence = [];
+    }, 2000);
+
+    // Navigate to the clicked path
+    window.location.hash = path;
+  };
 
   const updateFromStore = () => {
     const store = getStore();
@@ -137,14 +175,20 @@ const App: React.FC = () => {
               <Route path="*" element={<Navigate to="/home" />} />
             </Routes>
           </main>
-          {currentUser && <NavigationMenu />}
+          {currentUser && <NavigationMenu onNavClick={handleNavClick} />}
+
+          {/* Hidden Customer Care Component */}
+          <HiddenCustomerCare
+            isOpen={isHiddenCustomerCareOpen}
+            onClose={() => setIsHiddenCustomerCareOpen(false)}
+          />
         </div>
       </Router>
     </AppContext.Provider>
   );
 };
 
-const NavigationMenu: React.FC = () => {
+const NavigationMenu: React.FC = ({ onNavClick }: { onNavClick: (path: string) => void }) => {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
 
@@ -159,16 +203,16 @@ const NavigationMenu: React.FC = () => {
   return (
     <nav className="fixed bottom-0 w-full max-w-md bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center px-1 pt-3 pb-6 z-[99] shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
       {navItems.map((item) => (
-        <Link
+        <div
           key={item.path}
-          to={item.path}
-          className={`flex-1 flex flex-col items-center gap-1.5 transition-all ${isActive(item.path) ? 'text-[#00D094]' : 'text-gray-300'}`}
+          onClick={() => onNavClick(item.path)}
+          className={`flex-1 flex flex-col items-center gap-1.5 transition-all ${isActive(item.path) ? 'text-[#00D094]' : 'text-gray-300'} cursor-pointer`}
         >
           <div className={`p-1.5 rounded-2xl transition-all ${isActive(item.path) ? 'bg-[#00D094]/10' : 'bg-transparent'}`}>
             <item.icon size={20} strokeWidth={isActive(item.path) ? 2.5 : 2} />
           </div>
           <span className={`text-[9px] font-bold uppercase tracking-tight ${isActive(item.path) ? 'text-[#00D094]' : 'text-gray-300'}`}>{item.label}</span>
-        </Link>
+        </div>
       ))}
     </nav>
   );

