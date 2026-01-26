@@ -20,6 +20,7 @@ import PersonalInfo from './components/PersonalInfo';
 import AboutUs from './pages/AboutUs';
 import BalanceDetails from './pages/BalanceDetails';
 import Records from './pages/Records';
+import ChatView from './components/ChatView'; // Import the ChatView component
 import { Home as HomeIcon, Zap, Users, User as UserIcon, ShieldAlert, RefreshCw, MessageCircle, Share2 } from 'lucide-react';
 import { LOGO_IMAGE } from './constants';
 
@@ -131,6 +132,7 @@ const App: React.FC = () => {
               <Route path="/about-us" element={<AboutUs />} />
               <Route path="/balance-details" element={currentUser ? <BalanceDetails user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/records/:type" element={currentUser ? <Records user={currentUser} /> : <Navigate to="/login" />} />
+              <Route path="/chat" element={currentUser ? <ChatView /> : <Navigate to="/login" />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<Navigate to="/home" />} />
             </Routes>
@@ -149,8 +151,8 @@ const NavigationMenu: React.FC = () => {
   const navItems = [
     { label: 'Home', icon: HomeIcon, path: '/home' },
     { label: 'Earnings', icon: Zap, path: '/income' },
+    { label: 'AI Assistant', icon: MessageCircle, path: '/chat' },
     { label: 'Invite', icon: Share2, path: '/share' },
-    { label: 'My Team', icon: Users, path: '/team' },
     { label: 'Account', icon: UserIcon, path: '/my' },
   ];
 
