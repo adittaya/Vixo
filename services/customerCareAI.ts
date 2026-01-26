@@ -41,7 +41,7 @@ export const customerCareAI = {
       console.log("OpenRouter client created, sending request...");
 
       const response = await openrouter.chat.send({
-        model: "qwen/qwen3-coder:free",
+        model: "google/gemma-3-27b-it:free",
         messages: [
           {
             "role": "system",
