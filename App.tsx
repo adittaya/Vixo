@@ -160,7 +160,6 @@ const App: React.FC = () => {
               <Route path="/home" element={currentUser ? <Home user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/income" element={currentUser ? <Income user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/share" element={currentUser ? <Share user={currentUser} /> : <Navigate to="/login" />} />
-              <Route path="/team" element={currentUser ? <Team user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/community" element={currentUser ? <Community user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/support" element={currentUser ? <Support user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/my" element={currentUser ? <My user={currentUser} onLogout={handleLogout} /> : <Navigate to="/login" />} />
@@ -170,7 +169,6 @@ const App: React.FC = () => {
               <Route path="/about-us" element={<AboutUs />} />
               <Route path="/balance-details" element={currentUser ? <BalanceDetails user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/records/:type" element={currentUser ? <Records user={currentUser} /> : <Navigate to="/login" />} />
-              <Route path="/chat" element={currentUser ? <ChatView /> : <Navigate to="/login" />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<Navigate to="/home" />} />
             </Routes>
@@ -195,7 +193,6 @@ const NavigationMenu: React.FC = ({ onNavClick }: { onNavClick: (path: string) =
   const navItems = [
     { label: 'Home', icon: HomeIcon, path: '/home' },
     { label: 'Earnings', icon: Zap, path: '/income' },
-    { label: 'AI Assistant', icon: MessageCircle, path: '/chat' },
     { label: 'Invite', icon: Share2, path: '/share' },
     { label: 'Account', icon: UserIcon, path: '/my' },
   ];
