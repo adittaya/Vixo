@@ -10,17 +10,43 @@ import { adminPanelService } from './adminPanelService';
 import { User, Transaction, Purchase } from '../types';
 import { getStore, saveStore } from '../store';
 
+// Store for maintaining conversation context
+const conversationContext = new Map<string, { stage: string, userData?: any }>();
+
 export const advancedCustomerCareAI = {
   /**
    * Main response function with user retention and plan promotion features
    */
   async getResponse(message: string, user: User): Promise<string> {
+    // Get or initialize conversation context for this user
+    const contextKey = `user_${user.id}`;
+    let context = conversationContext.get(contextKey);
+
+    if (!context) {
+      context = { stage: 'initial' };
+      conversationContext.set(contextKey, context);
+    }
+
+    // Handle password reset flow specifically
+    if (context.stage === 'password_verification') {
+      return await this.handlePasswordVerification(message, user, context);
+    }
+
     // Analyze the message to determine intent
     const intent = this.analyzeUserIntent(message, user);
-    
+
     // Handle different intents
     switch(intent.type) {
       case 'problem_resolution':
+        // Check if this is a password reset request
+        if (message.toLowerCase().includes('password') || message.toLowerCase().includes('forgot password')) {
+          // Set context for password verification
+          context.stage = 'password_verification';
+          conversationContext.set(contextKey, context);
+
+          // Ask for verification information
+          return `I understand you're having trouble with your password. To help you reset it securely, I'll need to verify your identity first. Could you please provide your registered mobile number so I can locate your account? This is required for security purposes.`;
+        }
         return await this.handleProblemResolution(message, user);
       case 'plan_inquiry':
         return await this.handlePlanInquiry(message, user);
@@ -31,6 +57,42 @@ export const advancedCustomerCareAI = {
       case 'general':
       default:
         return await this.handleGeneralInquiry(message, user);
+    }
+  },
+
+  /**
+   * Handle password verification flow
+   */
+  async handlePasswordVerification(message: string, user: User, context: any): Promise<string> {
+    // Check if the user provided their mobile number for verification
+    const mobileMatch = message.match(/\b\d{10}\b/); // Look for 10-digit mobile number
+
+    if (mobileMatch) {
+      const providedMobile = mobileMatch[0];
+
+      // Verify the mobile number matches the user's registered mobile
+      if (providedMobile === user.mobile) {
+        // Process password change request
+        const result = await adminPanelService.changeUserPassword(user.id, "temporary_password123");
+        if (result.success) {
+          // Reset context
+          const contextKey = `user_${user.id}`;
+          conversationContext.set(contextKey, { stage: 'initial' });
+
+          return `✅ Great! I've successfully reset your password. Your new temporary password is "temporary_password123". Please log in with this password and change it immediately in the settings. Is there anything else I can help you with?`;
+        } else {
+          // Reset context
+          const contextKey = `user_${user.id}`;
+          conversationContext.set(contextKey, { stage: 'initial' });
+
+          return "I tried to reset your password but encountered an issue. Let me know if you'd like me to try again or if there's anything else I can help with.";
+        }
+      } else {
+        return `I'm sorry, but the mobile number you provided (${providedMobile}) doesn't match your registered number (${user.mobile}). For security purposes, I can only reset your password for your registered mobile number. Could you please verify your registered mobile number?`;
+      }
+    } else {
+      // User didn't provide a mobile number, ask again
+      return `I couldn't find a valid mobile number in your message. Could you please provide your registered 10-digit mobile number so I can verify your identity and reset your password?`;
     }
   },
 
@@ -93,29 +155,17 @@ export const advancedCustomerCareAI = {
    * Handle problem resolution with admin panel integration
    */
   async handleProblemResolution(message: string, user: User): Promise<string> {
-    // Try to resolve the problem using admin panel
-    const adminResult = await adminPanelService.getUserDetails(user.id);
-    
-    if (adminResult.success) {
-      // Check for specific problem types
-      if (message.toLowerCase().includes('password')) {
-        // Process password change request
-        const result = await adminPanelService.changeUserPassword(user.id, "new_default_password"); // In practice, you'd generate a secure temporary password
-        if (result.success) {
-          return "I've successfully reset your password access. Your password has been reset successfully. Please try logging in again with your new credentials.";
-        } else {
-          return "I tried to reset your password but encountered an issue. Let me know if you'd like me to try again or if there's anything else I can help with.";
-        }
-      } else if (message.toLowerCase().includes('balance') || message.toLowerCase().includes('wrong')) {
-        return `I've verified your account and your current balance is ₹${user.balance}. If you believe there's an issue, please let me know the specific concern.`;
-      } else if (message.toLowerCase().includes('withdraw')) {
-        return "I've processed your withdrawal request. It will be completed within 24-48 hours. You'll receive a notification once processed.";
-      } else {
-        // General problem resolution
-        return "I've looked into your issue and taken the necessary actions. Your problem has been resolved. Is there anything else I can help you with?";
-      }
+    // Skip password handling here since it's handled separately in getResponse
+    if (message.toLowerCase().includes('password') || message.toLowerCase().includes('forgot password')) {
+      // This should not be reached anymore, but just in case
+      return `I understand you're having trouble with your password. To help you reset it securely, I'll need to verify your identity first. Could you please provide your registered mobile number so I can locate your account? This is required for security purposes.`;
+    } else if (message.toLowerCase().includes('balance') || message.toLowerCase().includes('wrong')) {
+      return `I've verified your account and your current balance is ₹${user.balance}. If you believe there's an issue, please let me know the specific concern.`;
+    } else if (message.toLowerCase().includes('withdraw')) {
+      return "I've processed your withdrawal request. It will be completed within 24-48 hours. You'll receive a notification once processed.";
     } else {
-      return "I'm looking into your issue and will resolve it shortly. Thank you for your patience.";
+      // General problem resolution
+      return "I've looked into your issue and taken the necessary actions. Your problem has been resolved. Is there anything else I can help you with?";
     }
   },
 
