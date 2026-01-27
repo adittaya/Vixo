@@ -1,6 +1,7 @@
 import { User, Transaction, Purchase, AdminSettings, Product } from '../types';
 import { getStore, saveStore } from '../store';
-import { pollinationsService } from './pollinationsService';
+// Dynamically import pollinationsService to avoid potential import issues
+// import { pollinationsService } from './pollinationsService';
 
 /**
  * Code Generator AI Service
@@ -39,37 +40,19 @@ export const codeGeneratorAI = {
    * Analyze user request to determine code generation type
    */
   async analyzeRequest(request: string): Promise<{type: string, details: any}> {
-    const prompt = `
-      Analyze this request and determine what type of code should be generated:
-      
-      Request: "${request}"
-      
-      Possible types:
-      - new_page: For creating a new page/component
-      - new_component: For creating a new reusable component
-      - new_function: For creating a new utility function
-      - admin_feature: For creating a new admin panel feature
-      - user_feature: For creating a new user-facing feature
-      
-      Respond in JSON format:
-      {
-        "type": "the determined type",
-        "details": {any relevant details extracted from the request}
-      }
-    `;
-    
-    try {
-      const response = await pollinationsService.queryText(prompt);
-      return JSON.parse(response);
-    } catch (error) {
-      // If parsing fails, return a default analysis
-      if (request.toLowerCase().includes('page') || request.toLowerCase().includes('screen')) {
-        return { type: 'new_page', details: { name: 'NewPage', description: request } };
-      } else if (request.toLowerCase().includes('admin') || request.toLowerCase().includes('panel')) {
-        return { type: 'admin_feature', details: { name: 'AdminFeature', description: request } };
-      } else {
-        return { type: 'new_function', details: { name: 'NewFunction', description: request } };
-      }
+    // Simple keyword-based analysis to avoid dependency on external AI service
+    const lowerRequest = request.toLowerCase();
+
+    if (lowerRequest.includes('page') || lowerRequest.includes('screen') || lowerRequest.includes('view')) {
+      return { type: 'new_page', details: { name: 'NewPage', description: request } };
+    } else if (lowerRequest.includes('component') || lowerRequest.includes('widget')) {
+      return { type: 'new_component', details: { name: 'NewComponent', description: request } };
+    } else if (lowerRequest.includes('admin') || lowerRequest.includes('panel') || lowerRequest.includes('setting')) {
+      return { type: 'admin_feature', details: { name: 'AdminFeature', description: request } };
+    } else if (lowerRequest.includes('user') || lowerRequest.includes('profile') || lowerRequest.includes('account')) {
+      return { type: 'user_feature', details: { name: 'UserFeature', description: request } };
+    } else {
+      return { type: 'new_function', details: { name: 'NewFunction', description: request } };
     }
   },
 
