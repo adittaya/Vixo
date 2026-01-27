@@ -1,4 +1,5 @@
 import { OpenRouter } from "@openrouter/sdk";
+import { FREE_MODEL_LISTS } from '../constants/freeModels';
 
 // Use environment variable for API key (secure approach)
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
@@ -16,34 +17,9 @@ export const imageAnalysisAI = {
    * List of free models to try in order of preference (with multimodal support for image analysis)
    */
   FREE_MODELS: [
-    "google/gemini-2.0-flash-exp:free", // Multimodal support for image analysis
-    "qwen/qwen-2.5-vl-7b-instruct:free", // Multimodal support for image analysis
-    "microsoft/phi-3.5-vision-instruct:free", // Vision capabilities
-    "google/gemma-3-27b-it:free",
-    "google/gemma-3-12b-it:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "mistralai/mistral-small-3.1-24b-instruct:free",
-    "google/gemini-2.0-flash:free",
-    "google/gemma-3-4b-it:free",
-    "meta-llama/llama-3.2-3b-instruct:free",
-    "openai/gpt-oss-120b:free",
-    "openai/gpt-oss-20b:free",
-    "z-ai/glm-4.5-air:free",
-    "tngtech/deepseek-r1t2-chimera:free",
-    "tngtech/deepseek-r1t-chimera:free",
-    "nvidia/nemotron-nano-12b-v2-vl:free",
-    "nvidia/nemotron-nano-9b-v2:free",
-    "nvidia/nemotron-3-nano-30b-a3b:free",
-    "arcee-ai/trinity-mini:free",
-    "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
-    "nousresearch/hermes-3-llama-3.1-405b:free",
-    "liquid/lfm-2.5-1.2b-thinking:free",
-    "liquid/lfm-2.5-1.2b-instruct:free",
-    "allenai/molmo-2-8b:free",
-    "mistralai/devstral-2512:free",
-    "moonshotai/kimi-k2:free",
-    "qwen/qwen3-next-80b-a3b-instruct:free",
-    "deepseek/deepseek-r1-0528:free"
+    ...FREE_MODEL_LISTS.VISION_MODELS,
+    ...FREE_MODEL_LISTS.HIGH_PERFORMANCE,
+    ...FREE_MODEL_LISTS.TEXT_MODELS
   ],
 
   /**
