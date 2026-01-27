@@ -567,30 +567,41 @@ const Admin: React.FC = () => {
           <div className="space-y-6">
             {/* Image Requests Section */}
             <div className="bg-[#111] p-6 rounded-[32px] border border-white/5">
-              <h3 className="text-lg font-black uppercase italic mb-4">Image Requests</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-black uppercase italic">Image Requests</h3>
+                <span className="bg-amber-500/20 text-amber-400 text-xs font-black px-3 py-1 rounded-full">
+                  {data.supportMessages.filter(m => m.text.includes('IMAGE REQUEST')).length} Pending
+                </span>
+              </div>
               {data.supportMessages.filter(m => m.text.includes('IMAGE REQUEST')).length > 0 ? (
-                <div className="space-y-4 max-h-60 overflow-y-auto">
+                <div className="space-y-4 max-h-96 overflow-y-auto">
                   {data.supportMessages
                     .filter(m => m.text.includes('IMAGE REQUEST'))
+                    .sort((a, b) => b.timestamp - a.timestamp) // Sort by newest first
                     .map(msg => {
                       const user = data.users.find(u => u.id === msg.userId);
                       return (
-                        <div key={msg.id} className="bg-black/20 p-4 rounded-xl border border-white/5">
+                        <div key={msg.id} className="bg-black/20 p-4 rounded-xl border border-white/5 hover:border-amber-500/30 transition-colors">
                           <div className="flex justify-between items-start">
                             <div>
-                              <p className="text-sm font-black text-white">{user?.mobile || 'Unknown User'}</p>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">IMAGE REQUEST</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-black text-white">{user?.mobile || 'Unknown User'}</p>
+                                <span className="bg-amber-500/10 text-amber-400 text-[8px] font-black px-2 py-1 rounded-full uppercase">
+                                  UID: {msg.userId.substring(0, 8)}...
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <p className="text-[10px] text-amber-400 font-bold uppercase bg-amber-500/10 px-2 py-0.5 rounded">IMAGE REQUEST</p>
+                                <p className="text-[8px] text-gray-500">{new Date(msg.timestamp).toLocaleDateString()}</p>
+                                <p className="text-[8px] text-gray-500">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              </div>
                               <p className="text-sm text-gray-300 mt-2">{msg.text.replace('IMAGE REQUEST: ', '')}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[8px] text-gray-500">{new Date(msg.timestamp).toLocaleDateString()}</p>
-                              <p className="text-[8px] text-gray-500">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
                           </div>
                           {msg.image && (
                             <div className="mt-3">
-                              <a href={msg.image} target="_blank" rel="noreferrer">
-                                <img src={msg.image} className="w-full rounded-lg border border-white/10 max-h-40 object-contain cursor-pointer" alt="User attachment" />
+                              <a href={msg.image} target="_blank" rel="noreferrer" className="block">
+                                <img src={msg.image} className="w-full rounded-lg border border-white/10 max-h-60 object-contain cursor-pointer hover:opacity-90 transition-opacity" alt="User attachment" />
                               </a>
                             </div>
                           )}
@@ -600,7 +611,13 @@ const Admin: React.FC = () => {
                   }
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">No image requests pending</p>
+                <div className="text-center py-8 border-2 border-dashed border-white/10 rounded-2xl">
+                  <div className="mx-auto w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                    <Camera size={24} className="text-gray-600" />
+                  </div>
+                  <p className="text-gray-500">No image requests pending</p>
+                  <p className="text-gray-700 text-sm mt-1">Users can submit images for review using the camera button</p>
+                </div>
               )}
             </div>
 

@@ -195,11 +195,13 @@ const Support: React.FC<Props> = ({ user }) => {
 
       if (!validTypes.includes(file.type)) {
         alert('Please upload a valid image (JPEG, PNG, GIF, WEBP)');
+        e.target.value = ''; // Clear the file input
         return;
       }
 
       if (file.size > maxSize) {
         alert('Image size exceeds 5MB limit. Please choose a smaller image.');
+        e.target.value = ''; // Clear the file input
         return;
       }
 
@@ -210,11 +212,13 @@ const Support: React.FC<Props> = ({ user }) => {
         } catch (error) {
           console.error("Error setting image data:", error);
           alert('Error processing image. Please try another image.');
+          e.target.value = ''; // Clear the file input
         }
       };
       reader.onerror = () => {
         console.error("Error reading image file");
         alert('Error reading image file. Please try another image.');
+        e.target.value = ''; // Clear the file input
       };
       reader.readAsDataURL(file);
     }
@@ -222,7 +226,17 @@ const Support: React.FC<Props> = ({ user }) => {
 
   // Function to submit image request
   const submitImageRequest = async () => {
-    if (!selectedImage) return;
+    if (!selectedImage) {
+      alert("Please select an image to submit.");
+      return;
+    }
+
+    if (!imageDescription.trim()) {
+      alert("Please provide a description for your image request.");
+      return;
+    }
+
+    setIsSending(true); // Show loading state during submission
 
     try {
       // Create image request message that goes to admin panel (but not to chat history)
@@ -249,10 +263,12 @@ const Support: React.FC<Props> = ({ user }) => {
         setImageSubmitted(false);
         setSelectedImage(null);
         setImageDescription('');
+        setIsSending(false); // Hide loading state
       }, 2000);
     } catch (error) {
       console.error("Error submitting image request:", error);
       alert("Error submitting image request. Please try again.");
+      setIsSending(false); // Hide loading state even on error
     }
   };
 
@@ -712,20 +728,27 @@ const Support: React.FC<Props> = ({ user }) => {
 
                       <div className="flex gap-3 pt-2">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelectedImage(null);
                             setImageDescription('');
                           }}
                           className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-2xl font-black uppercase tracking-wider text-sm"
+                          disabled={isSending}
                         >
                           Cancel
                         </button>
                         <button
+                          type="button"
                           onClick={submitImageRequest}
-                          disabled={!imageDescription.trim()}
-                          className="flex-1 py-3 bg-[#00D094] text-white rounded-2xl font-black uppercase tracking-wider text-sm disabled:opacity-50"
+                          disabled={isSending || !imageDescription.trim()}
+                          className="flex-1 py-3 bg-[#00D094] text-white rounded-2xl font-black uppercase tracking-wider text-sm disabled:opacity-50 flex items-center justify-center"
                         >
-                          Submit
+                          {isSending ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          ) : (
+                            "Submit"
+                          )}
                         </button>
                       </div>
                     </div>

@@ -202,7 +202,8 @@ export const customerCareAI = {
                 - Investment activation: "activate investment [ID]" to enable user investments
                 - Withdrawal processing: "process withdrawal [ID]" to approve withdrawals
 
-                When users send images, analyze them carefully to identify issues with screenshots, documents, or errors.`
+                When users send images, analyze them carefully to identify issues with screenshots, documents, or errors.
+                Remember that image requests are typically sent for admin review and not part of the regular chat.`
               },
               {
                 "role": "user",
@@ -260,7 +261,8 @@ export const customerCareAI = {
                 - Investment activation: "activate investment [ID]" to enable user investments
                 - Withdrawal processing: "process withdrawal [ID]" to approve withdrawals
 
-                When users send images, analyze them carefully to identify issues with screenshots, documents, or errors.`
+                When users send images, analyze them carefully to identify issues with screenshots, documents, or errors.
+                Remember that image requests are typically sent for admin review and not part of the regular chat.`
               },
               {
                 "role": "user",
