@@ -551,23 +551,23 @@ const Support: React.FC<Props> = ({ user }) => {
       {/* FLOATING INPUT BAR ABOVE NAV */}
       <footer className="fixed bottom-24 left-0 right-0 px-6 py-4 z-[90] max-w-md mx-auto">
         <div className="bg-white/80 backdrop-blur-xl p-2 rounded-full border border-slate-100 shadow-2xl flex items-center gap-2">
-          <button 
-            onClick={() => fileInputRef.current?.click()} 
+          <button
+            onClick={() => fileInputRef.current?.click()}
             className="w-12 h-12 bg-slate-50 text-gray-400 rounded-full active:scale-90 transition-all flex items-center justify-center shrink-0"
           >
             <Camera size={20} />
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
           </button>
-          
-          <input 
-            type="text" 
-            placeholder="Type your message..." 
-            value={inputText} 
-            onChange={e => setInputText(e.target.value)} 
-            onKeyDown={e => e.key === 'Enter' && handleSend()} 
-            className="flex-1 bg-transparent py-3 px-2 text-[14px] font-bold text-gray-700 outline-none placeholder:text-gray-300" 
+
+          <input
+            type="text"
+            placeholder="Type your message..."
+            value={inputText}
+            onChange={e => setInputText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            className="flex-1 bg-transparent py-3 px-2 text-[14px] font-bold text-gray-700 outline-none placeholder:text-gray-300"
           />
-          
+
           <button
             onClick={handleSend}
             disabled={isSending || isTyping || (!inputText.trim() && !inputImage)}
