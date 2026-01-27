@@ -90,9 +90,6 @@ const Support: React.FC<Props> = ({ user }) => {
       console.error("Error with customer care AI:", error);
       aiResponse = { text: "Customer care AI is temporarily unavailable. Please try again later." };
       if (usingHiddenAI) setUsingHiddenAI(false);
-    } finally {
-      // Ensure typing indicator is always cleared
-      setIsTyping(false);
     }
 
     const store = getStore();
@@ -108,43 +105,50 @@ const Support: React.FC<Props> = ({ user }) => {
     setMessages(prev => [...prev, adminMessage]);
 
     const updatedStoreMessages = [...(store.supportMessages || []), adminMessage];
-    await saveStore({ supportMessages: updatedStoreMessages });
+    try {
+      await saveStore({ supportMessages: updatedStoreMessages });
+    } catch (error) {
+      console.error("Error saving message to store:", error);
+    } finally {
+      // Ensure typing indicator is always cleared
+      setIsTyping(false);
+    }
   }, [user.id, usingHiddenAI]);
 
   const handleSend = React.useCallback(async () => {
     if (!inputText.trim() && !inputImage) return;
 
     setIsSending(true);
-    const store = getStore();
-    const userMsgText = inputText || (inputImage ? "Sent an attachment." : "");
-    const currentImage = inputImage; // Capture current image state
-
-    // Create user message
-    const newUserMessage: SupportMessage = {
-      id: `msg-${Date.now()}`,
-      userId: user.id,
-      sender: 'user',
-      text: userMsgText,
-      image: currentImage || undefined,
-      timestamp: Date.now()
-    };
-
-    // Update UI immediately for better responsiveness
-    setMessages(prev => [...prev, newUserMessage]);
-
-    // Save to store in background
-    const updatedStoreMessages = [...(store.supportMessages || []), newUserMessage];
-    await saveStore({ supportMessages: updatedStoreMessages });
-
-    // Clear inputs
-    setInputText('');
-    setInputImage('');
-
-    // Process AI response separately
     try {
+      const store = getStore();
+      const userMsgText = inputText || (inputImage ? "Sent an attachment." : "");
+      const currentImage = inputImage; // Capture current image state
+
+      // Create user message
+      const newUserMessage: SupportMessage = {
+        id: `msg-${Date.now()}`,
+        userId: user.id,
+        sender: 'user',
+        text: userMsgText,
+        image: currentImage || undefined,
+        timestamp: Date.now()
+      };
+
+      // Update UI immediately for better responsiveness
+      setMessages(prev => [...prev, newUserMessage]);
+
+      // Save to store in background
+      const updatedStoreMessages = [...(store.supportMessages || []), newUserMessage];
+      await saveStore({ supportMessages: updatedStoreMessages });
+
+      // Clear inputs
+      setInputText('');
+      setInputImage('');
+
+      // Process AI response separately
       await triggerAIResponse(userMsgText);
     } catch (error) {
-      console.error("Error processing AI response:", error);
+      console.error("Error sending message:", error);
     } finally {
       // Ensure isSending is always reset
       setIsSending(false);
