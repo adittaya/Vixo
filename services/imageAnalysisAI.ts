@@ -29,56 +29,45 @@ export const imageAnalysisAI = {
    * @returns The complete AI response with image analysis
    */
   async analyzeImage(message: string, imageUrl: string): Promise<string> {
-    try {
-      // Check if API key is available
-      if (!API_KEY) {
-        console.error("OpenRouter API key is not configured");
-        return "API key is not configured. Please contact the administrator.";
-      }
+    // Check if API key is available
+    if (!API_KEY) {
+      console.error("OpenRouter API key is not configured");
+      return "Support is busy right now. Please try again in a moment.";
+    }
 
-      // Create a new instance of OpenRouter with the API key
-      console.log("Attempting to connect to OpenRouter API with image analysis...");
-      console.log("API Key present:", !!API_KEY);
-      console.log("API Key length:", API_KEY ? API_KEY.length : 0);
+    if (!API_KEY || API_KEY.length < 20) {
+      return "Support is busy right now. Please try again in a moment.";
+    }
 
-      if (!API_KEY || API_KEY.length < 20) {
-        return "API key is not properly configured. Please contact the administrator.";
-      }
+    const openrouter = new OpenRouter({
+      apiKey: API_KEY
+    });
 
-      const openrouter = new OpenRouter({
-        apiKey: API_KEY
-      });
+    // Try models one by one, in order (as per free model fallback handler)
+    // Use only ONE model at a time
+    // If a model fails, move to the next model
+    // Do NOT retry the same model again in the same request
+    // Do NOT try all models at once
+    // Stop as soon as one model gives a valid response
+    const multimodalModels = this.FREE_MODELS.filter(model =>
+      model.includes('gemini') ||
+      model.includes('vl') ||
+      model.includes('vision') ||
+      model.includes('qwen-2.5-vl') ||
+      model.includes('phi-3.5-vision')
+    );
 
-      // Try each model in the list until one succeeds (prioritizing multimodal models)
-      const multimodalModels = this.FREE_MODELS.filter(model =>
-        model.includes('gemini') ||
-        model.includes('vl') ||
-        model.includes('vision') ||
-        model.includes('qwen-2.5-vl') ||
-        model.includes('phi-3.5-vision')
-      );
+    // First try multimodal models one by one
+    for (const model of multimodalModels) {
+      try {
+        console.log(`Trying multimodal model: ${model}`);
 
-      // MAXIMUM 2 models tried per vision request (as per forced system prompt)
-      let visionAttempts = 0;
-      const maxVisionAttempts = 2;
-
-      // First try multimodal models
-      for (const model of multimodalModels) {
-        if (visionAttempts >= maxVisionAttempts) {
-          break; // Stop after max attempts
-        }
-
-        visionAttempts++;
-
-        try {
-          console.log(`Trying multimodal model: ${model} (attempt ${visionAttempts}/${maxVisionAttempts})`);
-
-          const response = await openrouter.chat.send({
-            model: model,
-            messages: [
-              {
-                "role": "system",
-                "content": `You are the official Customer Care Assistant for the VIXO investment platform.
+        const response = await openrouter.chat.send({
+          model: model,
+          messages: [
+            {
+              "role": "system",
+              "content": `You are the official Customer Care Assistant for the VIXO investment platform.
                 You behave like a trained human support executive.
 
                 You have INTERNAL ADMIN POWER to view and fix user issues,
@@ -183,65 +172,42 @@ export const imageAnalysisAI = {
                 • Encourage recharge and plan purchase
                 • Reduce human admin workload
                 • Keep platform safe`
-              },
-              {
-                "role": "user",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": message
-                  },
-                  {
-                    "type": "image_url",
-                    "image_url": {
-                      "url": imageUrl
-                    }
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": message
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": imageUrl
                   }
-                ]
-              }
-            ],
-            temperature: 0.7,
-            max_tokens: 1000
-          });
+                }
+              ]
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000
+        });
 
-          console.log(`Response received from ${model}`);
-          const content = response.choices?.[0]?.message?.content || "No response from AI service.";
+        console.log(`Response received from ${model}`);
+        const content = response.choices?.[0]?.message?.content || "No response from AI service.";
 
-          // Add a soft suggestion after the response
-          return content + "\n\nYou can check available plans now.";
-        } catch (modelError: any) {
-          console.log(`Multimodal model ${model} failed (attempt ${visionAttempts}):`, modelError.message);
-          // Continue to the next model
-          continue;
-        }
-      }
-
-      // If multimodal models failed, return structured failure message
-      // DO NOT try regular models as per forced system prompt
-      console.log("Vision models exhausted, returning fallback response");
-      return "Support is busy right now. Please wait a moment and try again. I'm here to help.";
-
-    } catch (error: any) {
-      console.error("Error in image analysis AI:", error);
-      console.error("Error details:", {
-        message: error.message,
-        name: error.name,
-        stack: error.stack
-      });
-
-      if (error.message?.includes('API key')) {
-        return "API key configuration error. Please contact the administrator.";
-      } else if (error.message?.includes('401') || error.message?.includes('unauthorized')) {
-        return "Unauthorized access - API key may be invalid or disabled. Please check the API configuration.";
-      } else if (error.message?.includes('429')) {
-        return "Too many requests. Please try again later.";
-      } else if (error.message?.includes('ETIMEDOUT') || error.message?.includes('network')) {
-        return "Network connection issue. Please check your internet connection and try again.";
-      } else if (error.message?.includes('invalid api key')) {
-        return "Invalid API key. The key may have been revoked or disabled.";
-      } else {
-        return "Support is busy right now. Please wait a moment and try again. I'm here to help.";
+        // Add a soft suggestion after the response
+        return content + "\n\nYou can check available plans now.";
+      } catch (modelError: any) {
+        console.log(`Multimodal model ${model} failed:`, modelError.message);
+        // Move to the next model (continue the loop)
+        continue;
       }
     }
+
+    // FAILURE HANDLING: If all free models fail,
+    // return a simple fallback message
+    console.log("All vision models exhausted, returning fallback response");
+    return "Support is busy right now. Please try again in a moment.";
   }
 };
