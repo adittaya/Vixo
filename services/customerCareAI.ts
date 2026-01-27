@@ -2,6 +2,7 @@ import { pollinationsService } from './pollinationsService';
 import { analyzeSentimentAdvanced, getSentimentBasedResponse } from '../utils/sentimentAnalysis';
 import { detectLanguage, getResponseInUserLanguage, normalizeForProcessing } from '../utils/languageDetection';
 import { adminPanelService } from './adminPanelService';
+import { customAIAgent } from './customAIAgent';
 
 /**
  * Customer Care AI Service

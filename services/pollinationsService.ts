@@ -35,7 +35,7 @@ export const pollinationsService = {
       // Query the Pollinations text endpoint with API key
       // Format: https://gen.pollinations.ai/text/{PROMPT}?key={KEY}
       const encodedPrompt = encodeURIComponent(prompt);
-      const apiKey = process.env.POLLINATIONS_API_KEY || import.meta.env.VITE_POLLINATIONS_API_KEY;
+      const apiKey = process.env.POLLINATIONS_API_KEY || (import.meta as any).env.VITE_POLLINATIONS_API_KEY;
       const url = apiKey
         ? `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`
         : `https://gen.pollinations.ai/text/${encodedPrompt}`;

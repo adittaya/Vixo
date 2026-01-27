@@ -8,16 +8,16 @@ async function testAdvancedCustomerCare() {
   const mockUser = {
     id: 'user123',
     name: 'John Doe',
-    email: 'john@example.com',
+    username: 'johndoe',
     mobile: '9876543210',
     balance: 150,
     withdrawableBalance: 50,
     totalInvested: 0,
     totalWithdrawn: 0,
+    referralCode: 'REF123',
     vipLevel: 0,
-    status: 'active',
-    registrationDate: '2023-01-01',
-    lastLoginDaysAgo: 2
+    status: 'active' as const,
+    registrationDate: '2023-01-01'
   };
 
   console.log('1. Testing problem resolution:');
@@ -96,7 +96,7 @@ async function testAdvancedCustomerCare() {
     { msg: "Need to recharge", expected: "recharge_suggestion" },
     { msg: "How are you?", expected: "general" }
   ];
-  
+
   for (const test of testMessages) {
     const intent = advancedCustomerCareAI.analyzeUserIntent(test.msg, mockUser);
     console.log(`Message: "${test.msg}" -> Intent: ${intent.type} (expected: ${test.expected})`);

@@ -227,18 +227,7 @@ export const advancedCustomerCareAI = {
       response += "- Free ₹100 bonus on first investment\n\n";
 
       response += "⏰ **HURRY: Offer expires in 48 hours!**";
-    } else if (user.lastLoginDaysAgo > 7) {
-      response += "👋 Welcome back! I was worried about you. Your account has been inactive for ${user.lastLoginDaysAgo} days.\n\n";
-
-      response += "📊 **ACCOUNT STATUS**:\n";
-      response += `- Current Balance: ₹${user.balance}\n`;
-      response += `- Potential Loss: ₹${(user.balance * 0.02 * user.lastLoginDaysAgo).toFixed(2)} in missed returns\n`;
-      response += `- Active Plans: ${user.activePlans || 0}\n\n`;
-
-      response += "🎁 **WELCOME BACK SPECIAL** 🎁\n";
-      response += "Recharge ₹500+ this week and get 25% bonus + 7-day premium access!\n\n";
-      response += "⏰ **Offer expires in 24 hours!**";
-    } else {
+    } else if (user.totalInvested > 0 && user.balance >= 100) {
       response += "Thank you for being a loyal VIXO user! I have some exciting news for you:\n\n";
 
       response += "🔥 **EXCLUSIVE LIMITED-OFFER FOR LOYAL USERS** 🔥\n";

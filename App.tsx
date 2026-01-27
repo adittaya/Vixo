@@ -196,7 +196,11 @@ const App: React.FC = () => {
   );
 };
 
-const NavigationMenu: React.FC = ({ onNavClick }: { onNavClick: (path: string) => void }) => {
+interface NavigationMenuProps {
+  onNavClick: (path: string) => void;
+}
+
+const NavigationMenu: React.FC<NavigationMenuProps> = ({ onNavClick }) => {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
 

@@ -165,9 +165,8 @@ const FinanceView: React.FC<FinanceViewProps> = ({ user, setUser }) => {
               />
             </div>
 
-            <button 
+            <button
               onClick={handleWithdrawal}
-              {/* Fix: boundBank does not exist on User */}
               disabled={loading || !user.accountNumber}
               className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg active:scale-95 transition-all ${
                 !user.accountNumber ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 shadow-emerald-500/20'

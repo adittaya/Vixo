@@ -7,21 +7,13 @@ async function testCustomerCareAI() {
   const testMessage = "Hello, I need help with my investment account. How can I increase my daily returns?";
   
   console.log('Sending message:', testMessage);
-  console.log('\nStreaming response:\n');
-  
+  console.log('\nGetting response:\n');
+
   try {
-    // Test streaming response
-    for await (const chunk of customerCareAI.getResponseStream(testMessage)) {
-      process.stdout.write(chunk);
-    }
-    
-    console.log('\n\n---\n');
-    
     // Test complete response
-    console.log('\nGetting complete response:\n');
     const completeResponse = await customerCareAI.getResponse(testMessage);
     console.log(completeResponse);
-    
+
     console.log('\n\nTest completed successfully!');
   } catch (error) {
     console.error('Error during testing:', error);

@@ -33,10 +33,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, isVisible, onClose }) => 
   };
 
   // Filter users based on search term
-  const filteredUsers = users.filter(u => 
+  const filteredUsers = users.filter(u =>
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.mobile.includes(searchTerm) ||
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    u.username?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Filter transactions based on search term
@@ -239,7 +239,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, isVisible, onClose }) => 
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Inactive</span>
-                    <span className="font-medium">{users.filter(u => u.status === 'inactive').length}</span>
+                    <span className="font-medium">{users.filter(u => u.status === 'frozen').length}</span>
                   </div>
                 </div>
               </div>
