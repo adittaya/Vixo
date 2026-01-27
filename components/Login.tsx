@@ -15,7 +15,7 @@ const Login: React.FC = () => {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const success = login(mobile, password);
     if (success) {

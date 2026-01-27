@@ -18,7 +18,7 @@ const Login: React.FC<Props> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (mobile === '7047571828' && password === 'admin123') {
       navigate('/admin');
