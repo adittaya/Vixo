@@ -225,7 +225,7 @@ const Support: React.FC<Props> = ({ user }) => {
     if (!selectedImage) return;
 
     try {
-      // Create image request message that goes to admin panel
+      // Create image request message that goes to admin panel (but not to chat history)
       const imageRequestMessage: SupportMessage = {
         id: `imgreq-${Date.now()}`,
         userId: user.id,
@@ -235,12 +235,12 @@ const Support: React.FC<Props> = ({ user }) => {
         timestamp: Date.now()
       };
 
-      // Save to store
+      // Save to global store (for admin panel access) but NOT to user's chat history
       const store = getStore();
       const updatedStoreMessages = [...(store.supportMessages || []), imageRequestMessage];
       await saveStore({ supportMessages: updatedStoreMessages });
 
-      // Show success state
+      // Show success state without adding to chat history
       setImageSubmitted(true);
 
       // Reset form after a delay
