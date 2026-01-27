@@ -70,6 +70,12 @@ const Support: React.FC<Props> = ({ user }) => {
   };
 
   const triggerAIResponse = React.useCallback(async (lastUserText: string) => {
+    // Only proceed if there's actual text to process
+    if (!lastUserText || lastUserText.trim() === '') {
+      setIsTyping(false);
+      return;
+    }
+
     setIsTyping(true);
 
     let aiResponse;
@@ -90,6 +96,9 @@ const Support: React.FC<Props> = ({ user }) => {
       console.error("Error with customer care AI:", error);
       aiResponse = { text: "Customer care AI is temporarily unavailable. Please try again later." };
       if (usingHiddenAI) setUsingHiddenAI(false);
+    } finally {
+      // Ensure typing indicator is always cleared
+      setIsTyping(false);
     }
 
     const store = getStore();
@@ -108,10 +117,7 @@ const Support: React.FC<Props> = ({ user }) => {
     try {
       await saveStore({ supportMessages: updatedStoreMessages });
     } catch (error) {
-      console.error("Error saving message to store:", error);
-    } finally {
-      // Ensure typing indicator is always cleared
-      setIsTyping(false);
+      console.error("Error saving admin message to store:", error);
     }
   }, [user.id, usingHiddenAI]);
 
@@ -141,12 +147,15 @@ const Support: React.FC<Props> = ({ user }) => {
       const updatedStoreMessages = [...(store.supportMessages || []), newUserMessage];
       await saveStore({ supportMessages: updatedStoreMessages });
 
-      // Clear inputs
+      // Clear inputs only after successful save
       setInputText('');
       setInputImage('');
 
       // Process AI response separately
-      await triggerAIResponse(userMsgText);
+      // Important: Trigger AI response for both text and image messages
+      // If there's no text but there's an image, send a default message indicating an image was sent
+      const aiMessage = userMsgText || (currentImage ? "User sent an image attachment." : "User sent a message.");
+      await triggerAIResponse(aiMessage);
     } catch (error) {
       console.error("Error sending message:", error);
     } finally {
