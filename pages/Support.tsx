@@ -90,6 +90,9 @@ const Support: React.FC<Props> = ({ user }) => {
       console.error("Error with customer care AI:", error);
       aiResponse = { text: "Customer care AI is temporarily unavailable. Please try again later." };
       if (usingHiddenAI) setUsingHiddenAI(false);
+    } finally {
+      // Ensure typing indicator is always cleared
+      setIsTyping(false);
     }
 
     const store = getStore();
@@ -106,8 +109,6 @@ const Support: React.FC<Props> = ({ user }) => {
 
     const updatedStoreMessages = [...(store.supportMessages || []), adminMessage];
     await saveStore({ supportMessages: updatedStoreMessages });
-
-    setIsTyping(false);
   }, [user.id, usingHiddenAI]);
 
   const handleSend = React.useCallback(async () => {
@@ -115,7 +116,8 @@ const Support: React.FC<Props> = ({ user }) => {
 
     setIsSending(true);
     const store = getStore();
-    const userMsgText = inputText || "Sent an attachment.";
+    const userMsgText = inputText || (inputImage ? "Sent an attachment." : "");
+    const currentImage = inputImage; // Capture current image state
 
     // Create user message
     const newUserMessage: SupportMessage = {
@@ -123,7 +125,7 @@ const Support: React.FC<Props> = ({ user }) => {
       userId: user.id,
       sender: 'user',
       text: userMsgText,
-      image: inputImage || undefined,
+      image: currentImage || undefined,
       timestamp: Date.now()
     };
 
@@ -144,6 +146,7 @@ const Support: React.FC<Props> = ({ user }) => {
     } catch (error) {
       console.error("Error processing AI response:", error);
     } finally {
+      // Ensure isSending is always reset
       setIsSending(false);
     }
   }, [inputText, inputImage, user.id, triggerAIResponse]);
