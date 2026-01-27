@@ -1,10 +1,10 @@
-import { customerCareRouter } from './customerCareRouter';
+import { customAIAgent } from './customAIAgent';
 import { pollinationsService } from './pollinationsService';
 import { requestManager, generateRequestId } from '../utils/requestManager';
 
 /**
  * Backbone AI Service
- * Implements the stateless processing system with Pollinations integration
+ * Implements the stateless processing system with Pollinations-only processing
  */
 export const backboneAI = {
   /**
@@ -16,59 +16,64 @@ export const backboneAI = {
    * @returns The AI response
    */
   async processRequest(
-    message: string, 
-    imageData?: string, 
+    message: string,
+    imageData?: string,
     imageDescription?: string,
     isImageGenerationRequest: boolean = false
   ): Promise<any> {
     // Generate a unique request ID for this message
     const requestId = generateRequestId();
-    
+
     // HARD KILL SWITCH: Cancel all pending requests
     requestManager.cancelAllRequests();
-    
+
     // Add this request to the pending list
     const controller = requestManager.addRequest(requestId);
-    
+
     try {
       // Decide action ONLY from current message
       if (isImageGenerationRequest) {
-        // Use Pollinations image endpoint directly from browser
+        // Use Pollinations for image generation (primary)
         const imageUrl = await this.runWithTimeoutAndAbort(
           pollinationsService.generateImage(message),
           3000, // 3 seconds timeout
           null,
           controller.signal
         );
-        
+
         if (!imageUrl) {
           return { type: 'text', content: "Image generation failed. Please try again." };
         }
-        
+
         return { type: 'image', content: imageUrl, prompt: message };
-      } 
+      }
       else if (imageData && imageDescription) {
-        // Run image analysis ONE TIME
-        const result = await customerCareRouter.processImageRequest(imageDescription, imageData);
-        
+        // Use custom AI agent with OCR + Pollinations for image analysis
+        const result = await this.runWithTimeoutAndAbort(
+          customAIAgent.processUserInput({ text: imageDescription, imageUrl: imageData }),
+          3000, // 3 seconds timeout
+          "Image analysis is taking longer than usual. Please try again.",
+          controller.signal
+        );
+
         // Return result immediately
         // Do NOT trigger chat automatically
         return { type: 'text', content: result };
-      } 
+      }
       else {
-        // Run chat executor with free models
+        // Use custom AI agent with Pollinations for text processing
         const response = await this.runWithTimeoutAndAbort(
-          customerCareRouter.processRequest(message),
+          customAIAgent.processUserInput({ text: message }),
           3000, // 3 seconds timeout
           "Support is busy right now. Please try again in a moment.",
           controller.signal
         );
-        
+
         return { type: 'text', content: response };
       }
     } catch (error) {
       console.error("Error in backboneAI processRequest:", error);
-      return { type: 'text', content: "Support is busy right now. Please try again in a moment." };
+      return { type: 'text', content: "I'm here, but things are a bit busy right now. Please try again in a moment." };
     } finally {
       // Remove the request from pending list
       requestManager.removeRequest(requestId);

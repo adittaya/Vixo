@@ -1,11 +1,9 @@
-import { chatAI } from './chatAI';
-import { imageAnalysisAI } from './imageAnalysisAI';
-import { generateImageDescription, parseImageContent, ImageAnalysisResult } from '../utils/imageParser';
+import { customAIAgent } from './customAIAgent';
 import { requestManager, generateRequestId } from '../utils/requestManager';
 
 /**
  * Router / Controller for Customer Care AI
- * Implements the ultimate fail-safe stateless solution
+ * Implements the ultimate fail-safe stateless solution with Pollinations-only processing
  */
 export const customerCareRouter = {
   /**
@@ -27,20 +25,20 @@ export const customerCareRouter = {
     try {
       // Check if this message contains an image
       if (imageData && imageDescription) {
-        // Run image agent ONLY
+        // Run image analysis with OCR + Pollinations
         const imageResult = await this.runWithTimeoutAndAbort(
-          imageAnalysisAI.analyzeImage(imageDescription, imageData),
+          customAIAgent.processUserInput({ text: imageDescription, imageUrl: imageData }),
           3000, // 3 seconds timeout
           "Image analysis timed out. Please try again.",
           controller.signal
         );
 
         // Return immediate response after image processing
-        return "Image received and checked.";
+        return imageResult;
       } else {
-        // Run chat agent ONLY
+        // Run chat with Pollinations
         const response = await this.runWithTimeoutAndAbort(
-          chatAI.getResponse(message),
+          customAIAgent.processUserInput({ text: message }),
           3000, // 3 seconds timeout
           "Support is busy right now. Please try again.",
           controller.signal
@@ -50,7 +48,7 @@ export const customerCareRouter = {
       }
     } catch (error) {
       console.error("Error in processRequest:", error);
-      return "Please try again. I'm here to help.";
+      return "I'm here, but things are a bit busy right now. Please try again in a moment.";
     } finally {
       // Remove the request from pending list
       requestManager.removeRequest(requestId);
@@ -74,9 +72,9 @@ export const customerCareRouter = {
     const controller = requestManager.addRequest(requestId);
 
     try {
-      // Run image agent ONLY
+      // Run image analysis with OCR + Pollinations
       const imageResult = await this.runWithTimeoutAndAbort(
-        imageAnalysisAI.analyzeImage(description, imageData),
+        customAIAgent.processUserInput({ text: description, imageUrl: imageData }),
         3000, // 3 seconds timeout
         "Image analysis timed out. Please try again.",
         controller.signal
@@ -85,7 +83,7 @@ export const customerCareRouter = {
       return imageResult;
     } catch (error) {
       console.error("Error in processImageRequest:", error);
-      return "Please try again. I'm here to help.";
+      return "I'm here, but things are a bit busy right now. Please try again in a moment.";
     } finally {
       // Remove the request from pending list
       requestManager.removeRequest(requestId);

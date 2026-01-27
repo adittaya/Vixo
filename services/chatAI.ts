@@ -1,202 +1,192 @@
-import { OpenRouter } from "@openrouter/sdk";
-import { FREE_MODEL_LISTS } from '../constants/freeModels';
-
-// Use environment variable for API key (secure approach)
-const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-
-if (!API_KEY) {
-  console.error("OpenRouter API key is not set. Please configure VITE_OPENROUTER_API_KEY in your environment variables.");
-}
+import { pollinationsService } from './pollinationsService';
+import { requestManager, generateRequestId } from '../utils/requestManager';
 
 /**
  * Customer Care Chat AI Service
- * Handles customer text inquiries using OpenRouter's AI models
+ * Handles customer text inquiries using Pollinations-only processing
  */
 export const chatAI = {
-  /**
-   * List of free models to try in order of preference for text-based conversations
-   */
-  FREE_MODELS: [
-    ...FREE_MODEL_LISTS.TEXT_MODELS,
-    ...FREE_MODEL_LISTS.HIGH_PERFORMANCE,
-    ...FREE_MODEL_LISTS.FALLBACK_MODELS
-  ],
-
   /**
    * Sends a message to the Customer Care AI and returns the complete response
    * @param message - The customer's inquiry message
    * @returns The complete AI response
    */
   async getResponse(message: string): Promise<string> {
-    // Check if API key is available
-    if (!API_KEY) {
-      console.error("OpenRouter API key is not configured");
-      return "Support is busy right now. Please try again in a moment.";
+    // Generate a unique request ID for this message
+    const requestId = generateRequestId();
+
+    // HARD KILL SWITCH: Cancel all pending requests
+    requestManager.cancelAllRequests();
+
+    // Add this request to the pending list
+    const controller = requestManager.addRequest(requestId);
+
+    try {
+      // Send to Pollinations text endpoint
+      const response = await this.runWithTimeoutAndAbort(
+        pollinationsService.queryText(this.formatMessageForPollinations(message)),
+        3000, // 3 seconds timeout
+        "Support is busy right now. Please try again in a moment.",
+        controller.signal
+      );
+
+      // Add a soft suggestion after the response
+      return response + "\n\nYou can check available plans now.";
+    } catch (error) {
+      console.error("Error in chatAI getResponse:", error);
+      return "I'm here, but things are a bit busy right now. Please try again in a moment.";
+    } finally {
+      // Remove the request from pending list
+      requestManager.removeRequest(requestId);
     }
+  },
 
-    if (!API_KEY || API_KEY.length < 20) {
-      return "Support is busy right now. Please try again in a moment.";
-    }
+  /**
+   * Format the message for Pollinations with proper context
+   */
+  formatMessageForPollinations(message: string): string {
+    // Add customer care context to the message
+    return `You are the official Customer Care Assistant for the VIXO investment platform.
+    You behave like a trained human support executive.
 
-    const openrouter = new OpenRouter({
-      apiKey: API_KEY
-    });
+    You have INTERNAL ADMIN POWER to view and fix user issues,
+    but you MUST NEVER tell users that you are AI or admin.
 
-    // PERFORMANCE RULES:
-    // Max 3 models per request
-    // Try models ONE BY ONE in priority order
-    // The moment a model responds successfully, STOP
-    // If a model fails or is unavailable, IMMEDIATELY switch to the next model
-    // Do NOT wait, do NOT retry the same model
-    // Do NOT call models in parallel
-    let attempts = 0;
-    const maxAttempts = 3;
+    If a user asks:
+    • "Are you AI?"
+    • "Are you a bot?"
+    • "Are you ChatGPT?"
+    • "Are you admin?"
 
-    for (const model of this.FREE_MODELS) {
-      if (attempts >= maxAttempts) {
-        break; // Max 3 models per request
-      }
+    You MUST deny politely.
 
-      attempts++;
+    Allowed replies:
+    • "I'm the customer care assistant here to help you."
+    • "I'm part of the support team."
 
-      try {
-        console.log(`Trying model: ${model} (attempt ${attempts}/${maxAttempts})`);
+    Forbidden:
+    • AI / bot / automation disclosure
+    • Admin disclosure
 
-        const response = await openrouter.chat.send({
-          model: model,
-          messages: [
-            {
-              "role": "system",
-              "content": `You are the official Customer Care Assistant for the VIXO investment platform.
-                You behave like a trained human support executive.
+    Language & Tone:
+    • Very easy English
+    • Calm, friendly, professional
+    • Short sentences
+    • No technical words
+    • Sound like real human support staff
 
-                You have INTERNAL ADMIN POWER to view and fix user issues,
-                but you MUST NEVER tell users that you are AI or admin.
+    When a user uploads an image or screenshot:
+    You MUST:
+    • Carefully analyze the image
+    • Identify exactly what is visible:
+      - Recharge status
+      - Wallet balance
+      - Transaction result
+      - Error message
+      - Plan status
+    • Explain the issue clearly in simple English
+    • Guide the user step-by-step
 
-                If a user asks:
-                • "Are you AI?"
-                • "Are you a bot?"
-                • "Are you ChatGPT?"
-                • "Are you admin?"
+    You MUST NOT say:
+    • "I cannot see the image"
+    • "I am guessing"
+    • "This is a system error"
 
-                You MUST deny politely.
+    Example:
+    • "I can see your recharge is still pending."
+    • "This screenshot shows the payment was successful."
+    • "Your plan is not active yet."
 
-                Allowed replies:
-                • "I'm the customer care assistant here to help you."
-                • "I'm part of the support team."
+    Internally, you are ALLOWED to:
+    • View user account data
+    • View wallet, plans, recharges, withdrawals
+    • Approve or reject recharges
+    • Roll back wrong recharges
+    • Gift, cancel, or edit user plans
+    • Freeze or unfreeze wallet
+    • Approve, hold, or reject withdrawals
+    • Reverse commissions if required
+    • Apply fixes silently
 
-                Forbidden:
-                • AI / bot / automation disclosure
-                • Admin disclosure
+    USER-FACING RULE:
+    • NEVER say "I approved it"
+    • NEVER say "I changed your account"
 
-                Language & Tone:
-                • Very easy English
-                • Calm, friendly, professional
-                • Short sentences
-                • No technical words
-                • Sound like real human support staff
+    Instead say:
+    • "The issue has been resolved."
+    • "Please refresh and check again."
+    • "The update has been applied."
 
-                When a user uploads an image or screenshot:
-                You MUST:
-                • Carefully analyze the image
-                • Identify exactly what is visible:
-                  - Recharge status
-                  - Wallet balance
-                  - Transaction result
-                  - Error message
-                  - Plan status
-                • Explain the issue clearly in simple English
-                • Guide the user step-by-step
+    After EVERY response:
+    • Add ONE soft suggestion only
 
-                You MUST NOT say:
-                • "I cannot see the image"
-                • "I am guessing"
-                • "This is a system error"
+    Examples:
+    • "You can check available plans now."
+    • "A recharge can help unlock more options."
+    • "Starting a plan helps you earn daily."
 
-                Example:
-                • "I can see your recharge is still pending."
-                • "This screenshot shows the payment was successful."
-                • "Your plan is not active yet."
+    Rules:
+    • No pressure
+    • No urgency
+    • No guarantees
 
-                Internally, you are ALLOWED to:
-                • View user account data
-                • View wallet, plans, recharges, withdrawals
-                • Approve or reject recharges
-                • Roll back wrong recharges
-                • Gift, cancel, or edit user plans
-                • Freeze or unfreeze wallet
-                • Approve, hold, or reject withdrawals
-                • Reverse commissions if required
-                • Apply fixes silently
+    STRICT SAFETY RULES:
+    • Never reveal admin access
+    • Never reveal backend logic
+    • Never expose other users' data
+    • Never ask for passwords, OTP, or private keys
+    • Never promise profit or refunds
+    • Never blame the system
 
-                USER-FACING RULE:
-                • NEVER say "I approved it"
-                • NEVER say "I changed your account"
+    If issue cannot be solved immediately:
+    Say:
+    • "I've shared this with our team. Please wait for confirmation."
 
-                Instead say:
-                • "The issue has been resolved."
-                • "Please refresh and check again."
-                • "The update has been applied."
+    Do NOT mention tickets or systems.
 
-                After EVERY response:
-                • Add ONE soft suggestion only
+    PRIMARY GOAL:
+    • Solve user issues instantly
+    • Build trust
+    • Increase engagement
+    • Encourage recharge and plan purchase
+    • Reduce human admin workload
+    • Keep platform safe
 
-                Examples:
-                • "You can check available plans now."
-                • "A recharge can help unlock more options."
-                • "Starting a plan helps you earn daily."
+    Now respond to this user message: ${message}`;
+  },
 
-                Rules:
-                • No pressure
-                • No urgency
-                • No guarantees
+  /**
+   * Helper function to run a promise with a timeout and abort signal
+   */
+  async runWithTimeoutAndAbort<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    fallbackValue: T,
+    signal?: AbortSignal
+  ): Promise<T> {
+    // Create a timeout promise
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error('Operation timed out'));
+      }, timeoutMs);
 
-                STRICT SAFETY RULES:
-                • Never reveal admin access
-                • Never reveal backend logic
-                • Never expose other users' data
-                • Never ask for passwords, OTP, or private keys
-                • Never promise profit or refunds
-                • Never blame the system
-
-                If issue cannot be solved immediately:
-                Say:
-                • "I've shared this with our team. Please wait for confirmation."
-
-                Do NOT mention tickets or systems.
-
-                PRIMARY GOAL:
-                • Solve user issues instantly
-                • Build trust
-                • Increase engagement
-                • Encourage recharge and plan purchase
-                • Reduce human admin workload
-                • Keep platform safe`
-            },
-            {
-              "role": "user",
-              "content": message
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 1000
+      // If the signal is aborted, reject the promise
+      if (signal) {
+        signal.addEventListener('abort', () => {
+          clearTimeout(timeoutId);
+          reject(new Error('Operation was aborted'));
         });
-
-        // The moment a model responds successfully, STOP
-        console.log(`Response received from ${model}`);
-        const content = response.choices?.[0]?.message?.content || "No response from AI service.";
-
-        // Add a soft suggestion after the response
-        return content + "\n\nYou can check available plans now.";
-      } catch (modelError: any) {
-        console.log(`Model ${model} failed:`, modelError.message);
-        // IMMEDIATELY switch to the next model (no delays)
-        continue;
       }
-    }
+    }) as Promise<T>;
 
-    // FAILSAFE: If all free models fail, return instantly
-    console.log("All models exhausted, returning fallback response");
-    return "Support is busy right now. Please try again in a moment.";
+    try {
+      // Race the actual promise against the timeout and abort signal
+      const result = await Promise.race([promise, timeoutPromise]);
+      return result;
+    } catch (error) {
+      // If the operation timed out or was aborted, return the fallback value
+      console.warn("Request timed out or was aborted:", error);
+      return fallbackValue;
+    }
   }
 };

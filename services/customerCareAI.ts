@@ -1,8 +1,8 @@
-import { backboneAI } from './backboneAI';
+import { customAIAgent } from './customAIAgent';
 
 /**
  * Customer Care AI Service
- * Uses the backbone AI service with Pollinations integration
+ * Uses custom AI agent backbone with Pollinations-only processing
  */
 export const customerCareAI = {
   /**
@@ -11,10 +11,9 @@ export const customerCareAI = {
    * @returns The complete AI response
    */
   async getResponse(message: string): Promise<string> {
-    // Use the backbone AI for text-based interactions
+    // Use custom AI agent with Pollinations-only processing
     // Each message is processed independently with no memory
-    const result = await backboneAI.processRequest(message);
-    return result.content;
+    return await customAIAgent.processUserInput({ text: message });
   },
 
   /**
@@ -24,10 +23,9 @@ export const customerCareAI = {
    * @returns The complete AI response with image analysis
    */
   async analyzeImage(description: string, imageUrl: string): Promise<string> {
-    // Use the backbone AI for image-based interactions
+    // Use custom AI agent with OCR + Pollinations processing
     // Each image request is processed independently with no memory
-    const result = await backboneAI.processRequest(description, imageUrl, description);
-    return result.content;
+    return await customAIAgent.processUserInput({ text: description, imageUrl });
   },
 
   /**
@@ -36,24 +34,24 @@ export const customerCareAI = {
    * @returns The URL to the generated image
    */
   async generateImage(prompt: string): Promise<string> {
-    // Use the backbone AI for image generation
-    const result = await backboneAI.processRequest(prompt, undefined, undefined, true);
-    return result.content;
+    // Use the pollinations service directly for image generation
+    const { pollinationsService } = await import('./pollinationsService');
+    return await pollinationsService.generateImage(prompt);
   },
 
   /**
    * Reset the router state to default
    */
   resetState(): void {
-    // Reset the request manager
-    // This is handled internally by the backbone AI
+    // Reset functionality if needed
+    // Currently not implemented in customAIAgent
   },
 
   /**
    * Get the number of pending requests (for monitoring)
    */
   getPendingRequestCount(): number {
-    // This is handled internally by the backbone AI
+    // Currently not implemented in customAIAgent
     return 0;
   }
 };
