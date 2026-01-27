@@ -42,15 +42,25 @@ export const chatAI = {
       apiKey: API_KEY
     });
 
-    // Try models one by one, in order (as per free model fallback handler)
-    // Use only ONE model at a time
-    // If a model fails, move to the next model
-    // Do NOT retry the same model again in the same request
-    // Do NOT try all models at once
-    // Stop as soon as one model gives a valid response
+    // PERFORMANCE RULES:
+    // Max 3 models per request
+    // Try models ONE BY ONE in priority order
+    // The moment a model responds successfully, STOP
+    // If a model fails or is unavailable, IMMEDIATELY switch to the next model
+    // Do NOT wait, do NOT retry the same model
+    // Do NOT call models in parallel
+    let attempts = 0;
+    const maxAttempts = 3;
+
     for (const model of this.FREE_MODELS) {
+      if (attempts >= maxAttempts) {
+        break; // Max 3 models per request
+      }
+
+      attempts++;
+
       try {
-        console.log(`Trying model: ${model}`);
+        console.log(`Trying model: ${model} (attempt ${attempts}/${maxAttempts})`);
 
         const response = await openrouter.chat.send({
           model: model,
@@ -172,6 +182,7 @@ export const chatAI = {
           max_tokens: 1000
         });
 
+        // The moment a model responds successfully, STOP
         console.log(`Response received from ${model}`);
         const content = response.choices?.[0]?.message?.content || "No response from AI service.";
 
@@ -179,13 +190,12 @@ export const chatAI = {
         return content + "\n\nYou can check available plans now.";
       } catch (modelError: any) {
         console.log(`Model ${model} failed:`, modelError.message);
-        // Move to the next model (continue the loop)
+        // IMMEDIATELY switch to the next model (no delays)
         continue;
       }
     }
 
-    // FAILURE HANDLING: If all free models fail,
-    // return a simple fallback message
+    // FAILSAFE: If all free models fail, return instantly
     console.log("All models exhausted, returning fallback response");
     return "Support is busy right now. Please try again in a moment.";
   }
