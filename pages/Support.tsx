@@ -74,7 +74,15 @@ const Support: React.FC<Props> = ({ user }) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         try {
-          setInputImage(reader.result as string);
+          // Show a popup to request image upload
+          if (window.confirm("Would you like to submit this image for admin review? You can describe the issue.")) {
+            setInputImage(reader.result as string);
+            // Focus on the text input to allow user to add description
+            setTimeout(() => {
+              const textInput = document.querySelector('input[type="text"]') as HTMLInputElement;
+              if (textInput) textInput.focus();
+            }, 100);
+          }
         } catch (error) {
           console.error("Error setting image data:", error);
           alert('Error processing image. Please try another image.');
@@ -151,42 +159,40 @@ const Support: React.FC<Props> = ({ user }) => {
       (lowerText.includes('attach') && (lowerText.includes('picture') || lowerText.includes('image') || lowerText.includes('photo'))) ||
       (lowerText.includes('how to') && (lowerText.includes('send') || lowerText.includes('upload')) && (lowerText.includes('picture') || lowerText.includes('image') || lowerText.includes('photo')));
 
-    if (isImageRelated) {
-      // Show a popup to request image upload
-      if (window.confirm("Would you like to submit an image request for admin review? You can attach an image and describe the issue.")) {
-        // Create an image request message that goes to admin panel
-        const imageRequestMessage: SupportMessage = {
-          id: `imgreq-${Date.now()}`,
-          userId: user.id,
-          sender: 'user',
-          text: `IMAGE REQUEST: ${inputText}`,
-          image: inputImage || undefined,
-          timestamp: Date.now()
-        };
+    if (isImageRelated || inputImage) {
+      // Create an image request message that goes to admin panel
+      const imageRequestMessage: SupportMessage = {
+        id: `imgreq-${Date.now()}`,
+        userId: user.id,
+        sender: 'user',
+        text: `IMAGE REQUEST: ${inputText || "User submitted an image for review"}`,
+        image: inputImage || undefined,
+        timestamp: Date.now()
+      };
 
-        // Save to store
-        const store = getStore();
-        const updatedStoreMessages = [...(store.supportMessages || []), imageRequestMessage];
-        await saveStore({ supportMessages: updatedStoreMessages });
+      // Save to store
+      const store = getStore();
+      const updatedStoreMessages = [...(store.supportMessages || []), imageRequestMessage];
+      await saveStore({ supportMessages: updatedStoreMessages });
 
-        // Show user feedback
-        const feedbackMessage: SupportMessage = {
-          id: `feedback-${Date.now()}`,
-          userId: user.id,
-          sender: 'admin',
-          text: "Your image request has been submitted to the admin panel. An admin will review it shortly.",
-          timestamp: Date.now()
-        };
+      // Show user feedback
+      const feedbackMessage: SupportMessage = {
+        id: `feedback-${Date.now()}`,
+        userId: user.id,
+        sender: 'admin',
+        text: "Your image request has been submitted to the admin panel. An admin will review it shortly.",
+        timestamp: Date.now()
+      };
 
-        setMessages(prev => [...prev, imageRequestMessage, feedbackMessage]);
+      setMessages(prev => [...prev, imageRequestMessage, feedbackMessage]);
 
-        const updatedStoreMessagesWithFeedback = [...(getStore().supportMessages || []), feedbackMessage];
-        await saveStore({ supportMessages: updatedStoreMessagesWithFeedback });
+      const updatedStoreMessagesWithFeedback = [...(getStore().supportMessages || []), feedbackMessage];
+      await saveStore({ supportMessages: updatedStoreMessagesWithFeedback });
 
-        // Clear inputs
-        setInputText('');
-        setInputImage('');
-      }
+      // Clear inputs
+      setInputText('');
+      setInputImage('');
+
       setIsSending(false);
       return;
     }
@@ -581,12 +587,16 @@ const Support: React.FC<Props> = ({ user }) => {
       {/* FLOATING INPUT BAR ABOVE NAV */}
       <footer className="fixed bottom-24 left-0 right-0 px-6 py-4 z-[90] max-w-md mx-auto">
         <div className="bg-white/80 backdrop-blur-xl p-2 rounded-full border border-slate-100 shadow-2xl flex items-center gap-2">
-          {/* Only show camera button if there's an image to send */}
-          {inputImage && (
-            <div className="w-12 h-12 bg-slate-50 text-gray-400 rounded-full active:scale-90 transition-all flex items-center justify-center shrink-0">
-              <Camera size={20} />
-            </div>
-          )}
+          {/* Always show camera button for image requests */}
+          <button
+            onClick={() => {
+              fileInputRef.current?.click();
+            }}
+            className="w-12 h-12 bg-slate-50 text-gray-400 rounded-full active:scale-90 transition-all flex items-center justify-center shrink-0"
+          >
+            <Camera size={20} />
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+          </button>
 
           <input
             type="text"
@@ -606,20 +616,6 @@ const Support: React.FC<Props> = ({ user }) => {
           </button>
         </div>
       </footer>
-
-      {/* IMAGE UPLOAD BUTTON - Only show when user wants to upload an image */}
-      {!inputImage && inputText.toLowerCase().includes('send') && (inputText.toLowerCase().includes('picture') || inputText.toLowerCase().includes('image') || inputText.toLowerCase().includes('photo')) && (
-        <div className="fixed bottom-36 left-0 right-0 px-6 z-[91] max-w-md mx-auto">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-[#00D094] text-white py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg"
-          >
-            <Camera size={20} />
-            <span className="font-black uppercase tracking-wider text-sm">Attach Image</span>
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-          </button>
-        </div>
-      )}
 
       {/* IMAGE PREVIEW MODAL */}
       <AnimatePresence>
