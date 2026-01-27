@@ -188,6 +188,19 @@ export interface Message {
   sources?: { uri: string; title: string }[];
 }
 
+// Code Generator AI types
+export interface CodeGenerationRequest {
+  type: 'new_page' | 'new_component' | 'new_function' | 'admin_feature' | 'user_feature';
+  details: any;
+}
+
+export interface GeneratedCode {
+  code: string;
+  fileName: string;
+  description: string;
+  dependencies?: string[];
+}
+
 export interface GeneratedImage {
   id: string;
   url: string;

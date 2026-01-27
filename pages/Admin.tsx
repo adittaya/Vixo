@@ -10,10 +10,12 @@ import {
   AlertTriangle, Filter, LayoutDashboard, Palette, Lock, Eye, EyeOff, ImageIcon,
   KeyRound, ShieldAlert, LogOut, RefreshCw, TrendingUp, Network, ArrowLeft, ArrowDownCircle, ArrowUpCircle,
   Coins, Megaphone, Link as LinkIcon, BarChart3, History, MessageSquare,
-  QrCode, ChevronRight, Headphones, Send, Camera, Cpu, CheckCircle2, RotateCcw, Snowflake
+  QrCode, ChevronRight, Headphones, Send, Camera, Cpu, CheckCircle2, RotateCcw, Snowflake,
+  Brain
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminCustomerCare from '../components/AdminCustomerCare';
+import AdminAgent from '../components/admin/AdminAgent';
 
 const MotionDiv = motion.div as any;
 
@@ -72,6 +74,7 @@ const Admin: React.FC = () => {
   const [distResult, setDistResult] = useState<DistributionStats | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAdminCustomerCareOpen, setIsAdminCustomerCareOpen] = useState(false);
+  const [isAiAgentOpen, setIsAiAgentOpen] = useState(false);
 
   const [securityTargetUser, setSecurityTargetUser] = useState<User | null>(null);
   const [editingSecurityField, setEditingSecurityField] = useState<'password' | 'pin' | 'fund' | 'manual_deduct' | null>(null);
@@ -393,6 +396,12 @@ const Admin: React.FC = () => {
             className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white/80 text-[10px] font-black uppercase hover:bg-white/10 transition-colors"
           >
             AI Assistant
+          </button>
+          <button
+            onClick={() => setIsAiAgentOpen(true)}
+            className="px-4 py-2.5 bg-blue-500/20 border border-blue-500/30 rounded-xl text-blue-300 text-[10px] font-black uppercase hover:bg-blue-500/30 transition-colors flex items-center gap-1"
+          >
+            <Brain size={12} /> Dev Agent
           </button>
           <button onClick={() => window.location.hash = '/home'} className="px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white/40 text-[10px] font-black uppercase">Terminate</button>
         </div>
@@ -990,6 +999,13 @@ const Admin: React.FC = () => {
         isOpen={isAdminCustomerCareOpen}
         onClose={() => setIsAdminCustomerCareOpen(false)}
         isAdmin={true}
+      />
+
+      {/* AI Development Agent Component */}
+      <AdminAgent
+        isOpen={isAiAgentOpen}
+        onClose={() => setIsAiAgentOpen(false)}
+        admin={data.admin}
       />
     </div>
   );
