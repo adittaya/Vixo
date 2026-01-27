@@ -19,6 +19,12 @@ const Support: React.FC<Props> = ({ user }) => {
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [usingHiddenAI, setUsingHiddenAI] = useState(false);
+
+  // State for image request form
+  const [showImageForm, setShowImageForm] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageDescription, setImageDescription] = useState('');
+  const [imageSubmitted, setImageSubmitted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -178,6 +184,77 @@ const Support: React.FC<Props> = ({ user }) => {
       setIsTyping(false);
     }
   }, [user.id, usingHiddenAI]);
+
+  // Function to handle image selection
+  const handleImageSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type and size
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!validTypes.includes(file.type)) {
+        alert('Please upload a valid image (JPEG, PNG, GIF, WEBP)');
+        return;
+      }
+
+      if (file.size > maxSize) {
+        alert('Image size exceeds 5MB limit. Please choose a smaller image.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        try {
+          setSelectedImage(reader.result as string);
+        } catch (error) {
+          console.error("Error setting image data:", error);
+          alert('Error processing image. Please try another image.');
+        }
+      };
+      reader.onerror = () => {
+        console.error("Error reading image file");
+        alert('Error reading image file. Please try another image.');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Function to submit image request
+  const submitImageRequest = async () => {
+    if (!selectedImage) return;
+
+    try {
+      // Create image request message that goes to admin panel
+      const imageRequestMessage: SupportMessage = {
+        id: `imgreq-${Date.now()}`,
+        userId: user.id,
+        sender: 'user',
+        text: `IMAGE REQUEST: ${imageDescription || "User submitted an image for review"}`,
+        image: selectedImage,
+        timestamp: Date.now()
+      };
+
+      // Save to store
+      const store = getStore();
+      const updatedStoreMessages = [...(store.supportMessages || []), imageRequestMessage];
+      await saveStore({ supportMessages: updatedStoreMessages });
+
+      // Show success state
+      setImageSubmitted(true);
+
+      // Reset form after a delay
+      setTimeout(() => {
+        setShowImageForm(false);
+        setImageSubmitted(false);
+        setSelectedImage(null);
+        setImageDescription('');
+      }, 2000);
+    } catch (error) {
+      console.error("Error submitting image request:", error);
+      alert("Error submitting image request. Please try again.");
+    }
+  };
 
   const handleSend = React.useCallback(async () => {
     // Regular text message handling
@@ -567,21 +644,125 @@ const Support: React.FC<Props> = ({ user }) => {
         )}
       </div>
 
-      {/* IMAGE REQUEST POPUP BUTTON - Always visible */}
-      <div className="fixed bottom-36 left-0 right-0 px-6 z-[91] max-w-md mx-auto">
+      {/* CIRCULAR IMAGE REQUEST BUTTON - Top Left Position */}
+      <div className="fixed top-32 left-6 z-[91]">
         <button
-          onClick={() => {
-            if (window.confirm("Would you like to submit an image request for admin review? You can attach an image and describe the issue.")) {
-              fileInputRef.current?.click();
-            }
-          }}
-          className="w-full bg-[#00D094] text-white py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg"
+          onClick={() => setShowImageForm(true)}
+          className="w-16 h-16 bg-[#00D094] text-white rounded-full flex items-center justify-center shadow-xl active:scale-95 transition-transform"
+          title="Image Request"
         >
-          <Camera size={20} />
-          <span className="font-black uppercase tracking-wider text-sm">Image Request</span>
+          <Camera size={24} />
         </button>
-        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
       </div>
+
+      {/* IMAGE REQUEST FORM MODAL */}
+      {showImageForm && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="bg-[#00D094] p-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-black text-white uppercase">Image Request</h3>
+                <button
+                  onClick={() => setShowImageForm(false)}
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <p className="text-white/80 text-sm mt-2">Submit an image for admin review</p>
+            </div>
+
+            <div className="p-6">
+              {!imageSubmitted ? (
+                // Image Upload Form
+                <div className="space-y-6">
+                  {!selectedImage ? (
+                    <div
+                      className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <div className="w-16 h-16 bg-[#00D094]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Camera size={32} className="text-[#00D094]" />
+                      </div>
+                      <p className="font-black text-gray-700">Tap to Select Image</p>
+                      <p className="text-gray-500 text-sm mt-1">JPG, PNG, or WEBP (Max 5MB)</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="relative rounded-2xl overflow-hidden border border-gray-200">
+                        <img
+                          src={selectedImage}
+                          alt="Preview"
+                          className="w-full h-48 object-contain bg-gray-50"
+                        />
+                        <button
+                          onClick={() => setSelectedImage(null)}
+                          className="absolute top-3 right-3 bg-red-500 text-white rounded-full p-1.5"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      <textarea
+                        value={imageDescription}
+                        onChange={e => setImageDescription(e.target.value)}
+                        placeholder="Describe the issue with your image..."
+                        className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-[#00D094]"
+                      />
+
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          onClick={() => {
+                            setSelectedImage(null);
+                            setImageDescription('');
+                          }}
+                          className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-2xl font-black uppercase tracking-wider text-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={submitImageRequest}
+                          disabled={!imageDescription.trim()}
+                          className="flex-1 py-3 bg-[#00D094] text-white rounded-2xl font-black uppercase tracking-wider text-sm disabled:opacity-50"
+                        >
+                          Submit
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageSelection}
+                  />
+                </div>
+              ) : (
+                // Success Page
+                <div className="text-center py-8">
+                  <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 size={48} className="text-emerald-500" />
+                  </div>
+                  <h4 className="text-2xl font-black text-gray-900 mb-2">Request Submitted!</h4>
+                  <p className="text-gray-600 mb-8">Your image request has been sent to our admin team. They will review it shortly.</p>
+                  <button
+                    onClick={() => {
+                      setShowImageForm(false);
+                      setImageSubmitted(false);
+                      setSelectedImage(null);
+                      setImageDescription('');
+                    }}
+                    className="w-full py-4 bg-[#00D094] text-white rounded-2xl font-black uppercase tracking-wider"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FLOATING INPUT BAR ABOVE NAV */}
       <footer className="fixed bottom-24 left-0 right-0 px-6 py-4 z-[90] max-w-md mx-auto">
@@ -604,20 +785,6 @@ const Support: React.FC<Props> = ({ user }) => {
           </button>
         </div>
       </footer>
-
-      {/* IMAGE PREVIEW MODAL */}
-      <AnimatePresence>
-        {inputImage && (
-          <MotionDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed bottom-40 left-6 right-6 bg-white p-4 rounded-[2.5rem] shadow-2xl border border-slate-100 z-[101] flex items-center gap-4">
-               <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-slate-100 shadow-sm"><img src={inputImage} className="w-full h-full object-cover" /></div>
-               <div className="flex-1">
-                  <p className="text-[10px] font-black text-gray-900 uppercase">Image attached</p>
-                  <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5 tracking-tight">Tap send to submit to admin</p>
-               </div>
-               <button onClick={() => setInputImage('')} className="p-2 bg-gray-100 rounded-full text-gray-500"><X size={16}/></button>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
