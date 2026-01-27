@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, PureComponent } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
 import { customerCareAI } from '../services/customerCareAI';
@@ -68,6 +68,47 @@ const Support: React.FC<Props> = ({ user }) => {
       reader.readAsDataURL(file);
     }
   };
+
+  const triggerAIResponse = React.useCallback(async (lastUserText: string) => {
+    setIsTyping(true);
+
+    let aiResponse;
+
+    // Use the customer care AI for all interactions
+    try {
+      // Get response from the customer care AI
+      const response = await customerCareAI.getResponse(lastUserText);
+
+      // Check if the response contains admin commands (only when in hidden mode)
+      if (usingHiddenAI && (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:'))) {
+        const result = await executeAdminAction(response);
+        aiResponse = { text: result };
+      } else {
+        aiResponse = { text: response };
+      }
+    } catch (error) {
+      console.error("Error with customer care AI:", error);
+      aiResponse = { text: "Customer care AI is temporarily unavailable. Please try again later." };
+      if (usingHiddenAI) setUsingHiddenAI(false);
+    }
+
+    const store = getStore();
+    const adminMessage: SupportMessage = {
+      id: `admin-msg-${Date.now()}`,
+      userId: user.id,
+      sender: 'admin',
+      text: aiResponse.text || "I am checking your request. Please wait. [ACTION:HOME]",
+      timestamp: Date.now()
+    };
+
+    // Update UI immediately
+    setMessages(prev => [...prev, adminMessage]);
+
+    const updatedStoreMessages = [...(store.supportMessages || []), adminMessage];
+    await saveStore({ supportMessages: updatedStoreMessages });
+
+    setIsTyping(false);
+  }, [user.id, usingHiddenAI]);
 
   const handleSend = React.useCallback(async () => {
     if (!inputText.trim() && !inputImage) return;
@@ -342,48 +383,7 @@ const Support: React.FC<Props> = ({ user }) => {
     }
   };
 
-  const triggerAIResponse = React.useCallback(async (lastUserText: string) => {
-    setIsTyping(true);
-
-    let aiResponse;
-
-    // Use the customer care AI for all interactions
-    try {
-      // Get response from the customer care AI
-      const response = await customerCareAI.getResponse(lastUserText);
-
-      // Check if the response contains admin commands (only when in hidden mode)
-      if (usingHiddenAI && (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:'))) {
-        const result = await executeAdminAction(response);
-        aiResponse = { text: result };
-      } else {
-        aiResponse = { text: response };
-      }
-    } catch (error) {
-      console.error("Error with customer care AI:", error);
-      aiResponse = { text: "Customer care AI is temporarily unavailable. Please try again later." };
-      if (usingHiddenAI) setUsingHiddenAI(false);
-    }
-
-    const store = getStore();
-    const adminMessage: SupportMessage = {
-      id: `admin-msg-${Date.now()}`,
-      userId: user.id,
-      sender: 'admin',
-      text: aiResponse.text || "I am checking your request. Please wait. [ACTION:HOME]",
-      timestamp: Date.now()
-    };
-
-    // Update UI immediately
-    setMessages(prev => [...prev, adminMessage]);
-
-    const updatedStoreMessages = [...(store.supportMessages || []), adminMessage];
-    await saveStore({ supportMessages: updatedStoreMessages });
-
-    setIsTyping(false);
-  }, [user.id, usingHiddenAI]);
-
-  const renderMessageText = React.useMemo(() => (text: string) => {
+  const renderMessageText = (text: string) => {
     const actionRegex = /\[ACTION:(RECHARGE|WITHDRAW|HOME)\]/g;
     const cleanText = text.replace(actionRegex, '').trim();
     const actions = Array.from(text.matchAll(actionRegex)).map(m => m[1]);
@@ -407,7 +407,7 @@ const Support: React.FC<Props> = ({ user }) => {
         )}
       </div>
     );
-  }, [navigate]);
+  };
 
   return (
     <div className="bg-[#f8faf9] flex flex-col h-screen max-h-screen overflow-hidden">
