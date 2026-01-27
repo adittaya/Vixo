@@ -32,7 +32,6 @@ const EnhancedCustomerCare: React.FC<EnhancedCustomerCareProps> = ({ user, isOpe
   const [isTyping, setIsTyping] = useState(false);
   const [showAdminControls, setShowAdminControls] = useState(false);
   const [usingHiddenAI, setUsingHiddenAI] = useState(false);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();

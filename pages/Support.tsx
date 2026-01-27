@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
 import * as ReactRouterDOM from 'react-router-dom';
 import EnhancedCustomerCare from '../components/EnhancedCustomerCare';
-import AdminPanel from '../components/AdminPanel';
 
 const { useNavigate } = ReactRouterDOM as any;
 const MotionDiv = motion.div as any;
@@ -23,7 +22,6 @@ const Support: React.FC<Props> = ({ user }) => {
   const [adminMode, setAdminMode] = useState(false);
   const [showAdminControls, setShowAdminControls] = useState(false);
   const [isEnhancedCustomerCareOpen, setIsEnhancedCustomerCareOpen] = useState(false);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -473,18 +471,18 @@ const Support: React.FC<Props> = ({ user }) => {
               <h2 className="text-[16px] font-bold text-gray-800 tracking-tight">
                 {usingHiddenAI ? (
                   <span className="flex items-center gap-1">
-                    <Shield className="text-red-500" size={16} /> Admin Support
+                    <Shield className="text-red-500" size={16} /> Admin Mode
                   </span>
                 ) : (
                   <span className="flex items-center gap-1">
-                    <Headphones size={16} className="text-blue-500" /> Simran (Support Executive)
+                    <Headphones size={16} className="text-blue-500" /> Simran
                   </span>
                 )}
               </h2>
               <p className="text-[10px] font-medium text-gray-600 mt-0.5">
                 {usingHiddenAI
-                  ? 'Admin Mode • Full Access Enabled'
-                  : 'Available now • Ready to help you'}
+                  ? 'Full Admin Access'
+                  : 'Customer Support Executive'}
               </p>
             </div>
           </div>
@@ -495,30 +493,25 @@ const Support: React.FC<Props> = ({ user }) => {
           </div>
         )}
         
-        {/* Admin Panel Button - Now more prominent as main support feature */}
-        <button
-          onClick={() => setShowAdminPanel(true)}
-          className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white active:scale-95 transition-all flex items-center gap-1 shadow-md"
-        >
-          <Shield size={16} />
-          <span className="text-xs font-bold">Admin Support</span>
-        </button>
+        {/* Admin Controls Button - Only visible in hidden AI mode */}
+        {usingHiddenAI && (
+          <button
+            onClick={() => setShowAdminControls(!showAdminControls)}
+            className="p-2 bg-gray-100 rounded-xl text-gray-600 active:scale-95 transition-all"
+          >
+            {showAdminControls ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        )}
 
-        {/* Admin Controls Button */}
-        <button
-          onClick={() => setShowAdminControls(!showAdminControls)}
-          className="p-2 bg-gray-100 rounded-xl text-gray-600 active:scale-95 transition-all"
-        >
-          {showAdminControls ? <EyeOff size={16} /> : <Eye size={16} />}
-        </button>
-
-        {/* Enhanced Customer Care Button */}
-        <button
-          onClick={() => setIsEnhancedCustomerCareOpen(true)}
-          className="p-2 bg-gray-100 rounded-xl text-gray-600 active:scale-95 transition-all"
-        >
-          <Settings size={16} />
-        </button>
+        {/* Enhanced Customer Care Button - Only visible in hidden AI mode */}
+        {usingHiddenAI && (
+          <button
+            onClick={() => setIsEnhancedCustomerCareOpen(true)}
+            className="p-2 bg-gray-100 rounded-xl text-gray-600 active:scale-95 transition-all"
+          >
+            <Settings size={16} />
+          </button>
+        )}
       </header>
 
       {/* ADMIN CONTROLS PANEL */}
@@ -664,13 +657,6 @@ const Support: React.FC<Props> = ({ user }) => {
         isOpen={isEnhancedCustomerCareOpen}
         onClose={() => setIsEnhancedCustomerCareOpen(false)}
         isAdmin={false}
-      />
-
-      {/* Admin Panel Component */}
-      <AdminPanel
-        user={user}
-        isVisible={showAdminPanel}
-        onClose={() => setShowAdminPanel(false)}
       />
     </div>
   );
