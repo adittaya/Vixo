@@ -5,6 +5,8 @@ import { detectLanguage, getResponseInUserLanguage, normalizeForProcessing } fro
 /**
  * Customer Care AI Service
  * Uses Pollinations API as the primary model
+ * Includes admin panel access for resolving user issues
+ * Implements verification system for sensitive operations
  */
 export const customerCareAI = {
   /**
@@ -150,5 +152,93 @@ User's message: ${normalizedMessage}`;
   getPendingRequestCount(): number {
     // Currently not implemented in customAIAgent
     return 0;
+  },
+
+  /**
+   * Check if a user requires verification for certain operations
+   * @param message - The user's inquiry message
+   * @returns Boolean indicating if verification is required
+   */
+  requiresVerification(message: string): boolean {
+    const verificationKeywords = [
+      'withdraw', 'withdrawal', 'money transfer', 'change password',
+      'security', 'verification', 'identity', 'personal info',
+      'bank details', 'payment', 'transaction', 'account access'
+    ];
+
+    const lowerMessage = message.toLowerCase();
+    return verificationKeywords.some(keyword => lowerMessage.includes(keyword));
+  },
+
+  /**
+   * Generate verification request for sensitive operations
+   * @param message - The user's inquiry message
+   * @returns Verification instructions
+   */
+  generateVerificationRequest(message: string): string {
+    const verificationTypes = {
+      withdrawal: {
+        keywords: ['withdraw', 'withdrawal', 'money transfer'],
+        requirements: ['Government ID', 'Bank statement', 'Selfie with ID']
+      },
+      identity: {
+        keywords: ['identity', 'verification', 'personal info'],
+        requirements: ['Government ID', 'Address proof', 'Phone verification']
+      },
+      security: {
+        keywords: ['security', 'password', 'account access'],
+        requirements: ['Current password', 'Security questions', 'Registered email/phone']
+      }
+    };
+
+    // Determine verification type based on message
+    let verificationType = 'general';
+    for (const [type, data] of Object.entries(verificationTypes)) {
+      if (data.keywords.some(keyword => message.toLowerCase().includes(keyword))) {
+        verificationType = type;
+        break;
+      }
+    }
+
+    const requirements = verificationTypes[verificationType as keyof typeof verificationTypes]?.requirements ||
+                         ['Valid identification', 'Additional verification'];
+
+    return `For this request, verification is required for security purposes. Please provide the following:\n\n` +
+           `• ${requirements.join('\n• ')}\n\n` +
+           `Once verified, our support team will assist you further. Your security is our top priority.`;
+  },
+
+  /**
+   * Check if user has admin privileges
+   * @param user - The user object
+   * @returns Boolean indicating if user has admin access
+   */
+  isAdmin(user: any): boolean {
+    // In a real implementation, this would check user roles/permissions
+    // For now, returning false as only authorized personnel should have admin access
+    return user?.role === 'admin' || user?.isAdmin === true;
+  },
+
+  /**
+   * Get admin panel options for customer care representatives
+   * @param user - The user object
+   * @returns Available admin actions
+   */
+  getAdminOptions(user: any): string[] {
+    if (!this.isAdmin(user)) {
+      return [];
+    }
+
+    return [
+      'View user account details',
+      'Reset user password',
+      'Approve withdrawal requests',
+      'Update account status',
+      'Process refunds',
+      'Manage VIP levels',
+      'Review transaction history',
+      'Suspend accounts',
+      'Generate reports'
+    ];
   }
 };

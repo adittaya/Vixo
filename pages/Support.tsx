@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
 import { customerCareAI } from '../services/customerCareAI';
-import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield, Settings, Eye, EyeOff, MessageCircle } from 'lucide-react';
+import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield, Settings, Eye, EyeOff, MessageCircle, Lock, Unlock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
 import * as ReactRouterDOM from 'react-router-dom';
 import EnhancedCustomerCare from '../components/EnhancedCustomerCare';
+import AdminPanel from '../components/AdminPanel';
 
 const { useNavigate } = ReactRouterDOM as any;
 const MotionDiv = motion.div as any;
@@ -22,6 +23,7 @@ const Support: React.FC<Props> = ({ user }) => {
   const [adminMode, setAdminMode] = useState(false);
   const [showAdminControls, setShowAdminControls] = useState(false);
   const [isEnhancedCustomerCareOpen, setIsEnhancedCustomerCareOpen] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -71,51 +73,60 @@ const Support: React.FC<Props> = ({ user }) => {
 
     let aiResponse;
 
-    // Prepare personalized context for the AI
-    const userContext = `
-      User Information:
-      - Name: ${user.name}
-      - Mobile: ${user.mobile}
-      - Balance: ₹${user.balance}
-      - Withdrawable Balance: ₹${user.withdrawableBalance}
-      - Total Invested: ₹${user.totalInvested}
-      - Total Withdrawn: ₹${user.totalWithdrawn}
-      - VIP Level: ${user.vipLevel}
-      - Registration Date: ${user.registrationDate}
-      - Status: ${user.status}
-      
-      Current Request: ${lastUserText}
-    `;
+    // Check if verification is required for this request
+    const requiresVerification = customerCareAI.requiresVerification(lastUserText);
 
-    // Check if this is an image generation request
-    const isImageGenerationRequest = lastUserText.toLowerCase().includes('generate image') ||
-                                     lastUserText.toLowerCase().includes('create image') ||
-                                     lastUserText.toLowerCase().includes('make image') ||
-                                     lastUserText.toLowerCase().includes('image of');
+    if (requiresVerification) {
+      // Generate verification request
+      const verificationMessage = customerCareAI.generateVerificationRequest(lastUserText);
+      aiResponse = { text: verificationMessage };
+    } else {
+      // Prepare personalized context for the AI
+      const userContext = `
+        User Information:
+        - Name: ${user.name}
+        - Mobile: ${user.mobile}
+        - Balance: ₹${user.balance}
+        - Withdrawable Balance: ₹${user.withdrawableBalance}
+        - Total Invested: ₹${user.totalInvested}
+        - Total Withdrawn: ₹${user.totalWithdrawn}
+        - VIP Level: ${user.vipLevel}
+        - Registration Date: ${user.registrationDate}
+        - Status: ${user.status}
 
-    // Use the customer care AI for all interactions
-    try {
-      let response;
-      if (isImageGenerationRequest) {
-        // Generate an image using Pollinations
-        response = await customerCareAI.generateImage(lastUserText);
-        aiResponse = { text: `I generated an image for you: [IMAGE_LINK]${response}[/IMAGE_LINK]` };
-      } else {
-        // Get response from the customer care AI with personalized context
-        response = await customerCareAI.getResponse(userContext);
+        Current Request: ${lastUserText}
+      `;
 
-        // Check if the response contains admin commands (only when in hidden mode)
-        if (usingHiddenAI && (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:'))) {
-          const result = await executeAdminAction(response);
-          aiResponse = { text: result };
+      // Check if this is an image generation request
+      const isImageGenerationRequest = lastUserText.toLowerCase().includes('generate image') ||
+                                       lastUserText.toLowerCase().includes('create image') ||
+                                       lastUserText.toLowerCase().includes('make image') ||
+                                       lastUserText.toLowerCase().includes('image of');
+
+      // Use the customer care AI for all interactions
+      try {
+        let response;
+        if (isImageGenerationRequest) {
+          // Generate an image using Pollinations
+          response = await customerCareAI.generateImage(lastUserText);
+          aiResponse = { text: `I generated an image for you: [IMAGE_LINK]${response}[/IMAGE_LINK]` };
         } else {
-          aiResponse = { text: response };
+          // Get response from the customer care AI with personalized context
+          response = await customerCareAI.getResponse(userContext);
+
+          // Check if the response contains admin commands (only when in hidden mode)
+          if (usingHiddenAI && (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:'))) {
+            const result = await executeAdminAction(response);
+            aiResponse = { text: result };
+          } else {
+            aiResponse = { text: response };
+          }
         }
+      } catch (error) {
+        console.error("Error with customer care AI:", error);
+        aiResponse = { text: "I'm having trouble connecting right now. Please try again in a moment." };
+        if (usingHiddenAI) setUsingHiddenAI(false);
       }
-    } catch (error) {
-      console.error("Error with customer care AI:", error);
-      aiResponse = { text: "I'm having trouble connecting right now. Please try again in a moment." };
-      if (usingHiddenAI) setUsingHiddenAI(false);
     }
 
     try {
@@ -474,6 +485,15 @@ const Support: React.FC<Props> = ({ user }) => {
           </div>
         )}
         
+        {/* Admin Panel Button */}
+        <button
+          onClick={() => setShowAdminPanel(true)}
+          className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all flex items-center gap-1"
+        >
+          <Shield size={16} />
+          <span className="text-xs font-bold">Admin</span>
+        </button>
+
         {/* Admin Controls Button */}
         <button
           onClick={() => setShowAdminControls(!showAdminControls)}
@@ -623,6 +643,13 @@ const Support: React.FC<Props> = ({ user }) => {
         isOpen={isEnhancedCustomerCareOpen}
         onClose={() => setIsEnhancedCustomerCareOpen(false)}
         isAdmin={false}
+      />
+
+      {/* Admin Panel Component */}
+      <AdminPanel
+        user={user}
+        isVisible={showAdminPanel}
+        onClose={() => setShowAdminPanel(false)}
       />
     </div>
   );

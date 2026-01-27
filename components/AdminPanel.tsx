@@ -1,118 +1,433 @@
+import React, { useState, useEffect } from 'react';
+import { User, Transaction, Purchase } from '../types';
+import { getStore, saveStore } from '../store';
+import { Shield, UserCheck, CreditCard, Wallet, AlertTriangle, CheckCircle, XCircle, Clock, Search, Filter, Download, Eye, Edit, Trash2 } from 'lucide-react';
 
-import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { Settings, Users, CreditCard, Check, X, LogIn, Lock, Database } from 'lucide-react';
-import { motion } from 'framer-motion';
+interface AdminPanelProps {
+  user: User;
+  isVisible: boolean;
+  onClose: () => void;
+}
 
-const AdminPanel: React.FC = () => {
-  const { 
-    isAdmin, adminLogin, adminLogout, transactions, users, approveTransaction, rejectTransaction 
-  } = useApp();
+const AdminPanel: React.FC<AdminPanelProps> = ({ user, isVisible, onClose }) => {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'transactions' | 'reports'>('dashboard');
+  const [users, setUsers] = useState<User[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (adminLogin(username, password)) {
-      setError('');
-    } else {
-      setError('Invalid admin credentials');
+  // Load data from store
+  useEffect(() => {
+    if (isVisible) {
+      loadData();
     }
+  }, [isVisible]);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const store = getStore();
+    setUsers(store.users || []);
+    setTransactions(store.transactions || []);
+    setIsLoading(false);
   };
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-[80vh] flex flex-col justify-center items-center px-6">
-        <form onSubmit={handleLogin} className="glass-panel p-8 rounded-[2rem] w-full max-w-sm space-y-6">
-          <div className="text-center space-y-2">
-            <Lock size={40} className="mx-auto text-amber-500" />
-            <h2 className="text-xl font-black text-white uppercase">Admin Vault</h2>
-          </div>
-          <div className="space-y-4">
-            <input 
-              type="text" 
-              placeholder="Admin ID" 
-              className="w-full bg-slate-900 p-4 rounded-xl text-white outline-none border border-slate-800"
-              value={username} onChange={e => setUsername(e.target.value)}
-            />
-            <input 
-              type="password" 
-              placeholder="Passcode" 
-              className="w-full bg-slate-900 p-4 rounded-xl text-white outline-none border border-slate-800"
-              value={password} onChange={e => setPassword(e.target.value)}
-            />
-          </div>
-          {error && <p className="text-red-500 text-[10px] font-bold text-center uppercase">{error}</p>}
-          <button type="submit" className="w-full py-4 gold-gradient text-slate-900 font-black rounded-xl uppercase tracking-widest">
-            Authenticate
-          </button>
-        </form>
-      </div>
-    );
-  }
+  // Filter users based on search term
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.mobile.includes(searchTerm) ||
+    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  // Fix: Using lowercase 'recharge', 'withdraw' and 'pending' to match TransactionType and TransactionStatus
-  const pendingRecharges = transactions.filter(t => t.type === 'recharge' && t.status === 'pending');
-  const pendingWithdrawals = transactions.filter(t => t.type === 'withdraw' && t.status === 'pending');
+  // Filter transactions based on search term
+  const filteredTransactions = transactions.filter(t => 
+    t.userId.includes(searchTerm) ||
+    String(t.amount).includes(searchTerm) ||
+    t.type.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Admin actions
+  const updateUserStatus = async (userId: string, newStatus: string) => {
+    const store = getStore();
+    const updatedUsers = store.users.map(u => 
+      u.id === userId ? { ...u, status: newStatus } : u
+    );
+    
+    await saveStore({ ...store, users: updatedUsers });
+    setUsers(updatedUsers);
+  };
+
+  const processTransaction = async (transactionId: string, action: 'approve' | 'reject') => {
+    const store = getStore();
+    const updatedTransactions = store.transactions.map(t => 
+      t.id === transactionId ? { ...t, status: action === 'approve' ? 'approved' : 'rejected' } : t
+    );
+    
+    await saveStore({ ...store, transactions: updatedTransactions });
+    setTransactions(updatedTransactions);
+  };
+
+  if (!isVisible) return null;
 
   return (
-    <div className="space-y-8 pb-20">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-black text-white flex items-center gap-2 uppercase">
-          <Settings size={20} /> Control Hub
-        </h2>
-        <button onClick={adminLogout} className="text-[10px] text-slate-500 font-bold border border-slate-800 px-3 py-1 rounded-full uppercase">Logout</button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="glass-panel p-4 rounded-2xl">
-          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Total Users</p>
-          <p className="text-xl font-black text-white">{users.length}</p>
-        </div>
-        <div className="glass-panel p-4 rounded-2xl">
-          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Total Balance</p>
-          <p className="text-xl font-black text-amber-500">₹{users.reduce((acc, u) => acc + u.balance, 0)}</p>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <CreditCard size={16} /> Pending Recharges ({pendingRecharges.length})
-        </h3>
-        {pendingRecharges.map(t => (
-          <div key={t.id} className="glass-panel p-4 rounded-2xl border border-slate-800 space-y-3">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-bold text-white">₹{t.amount}</p>
-                <p className="text-[10px] text-amber-500 font-mono">UTR: {t.utr}</p>
-                <p className="text-[10px] text-slate-500">User: {users.find(u => u.id === t.userId)?.name}</p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => approveTransaction(t.id)} className="w-8 h-8 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center"><Check size={16} /></button>
-                <button onClick={() => rejectTransaction(t.id)} className="w-8 h-8 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center"><X size={16} /></button>
-              </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-6xl h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Shield className="text-yellow-300" size={28} />
+            <div>
+              <h2 className="font-bold text-xl">Admin Control Panel</h2>
+              <p className="text-sm opacity-80">Manage users and transactions</p>
             </div>
           </div>
-        ))}
-        {pendingRecharges.length === 0 && <p className="text-center text-[10px] text-slate-600 uppercase py-4">No pending recharges</p>}
-      </div>
+          <button 
+            onClick={onClose}
+            className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
+          >
+            <XCircle size={24} />
+          </button>
+        </div>
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <Database size={16} /> User Directory
-        </h3>
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {users.map(u => (
-            <div key={u.id} className="glass-panel p-3 rounded-xl border border-slate-900 flex justify-between items-center">
-              <div>
-                <p className="text-[10px] font-bold text-white">{u.name}</p>
-                <p className="text-[9px] text-slate-500">{u.mobile}</p>
-              </div>
-              <p className="text-[10px] font-bold text-green-500">₹{u.balance}</p>
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 bg-gray-50">
+          <button
+            className={`px-6 py-3 font-semibold text-sm flex items-center gap-2 transition-colors ${
+              activeTab === 'dashboard' 
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            <CreditCard size={16} />
+            Dashboard
+          </button>
+          <button
+            className={`px-6 py-3 font-semibold text-sm flex items-center gap-2 transition-colors ${
+              activeTab === 'users' 
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('users')}
+          >
+            <UserCheck size={16} />
+            Users
+          </button>
+          <button
+            className={`px-6 py-3 font-semibold text-sm flex items-center gap-2 transition-colors ${
+              activeTab === 'transactions' 
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('transactions')}
+          >
+            <Wallet size={16} />
+            Transactions
+          </button>
+          <button
+            className={`px-6 py-3 font-semibold text-sm flex items-center gap-2 transition-colors ${
+              activeTab === 'reports' 
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('reports')}
+          >
+            <Download size={16} />
+            Reports
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-4 bg-gray-50">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
             </div>
-          ))}
+          ) : activeTab === 'dashboard' ? (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <UserCheck className="text-blue-600" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-sm">Total Users</p>
+                    <p className="font-bold text-xl">{users.length}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-100 p-2 rounded-lg">
+                    <Wallet className="text-green-600" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-sm">Active Users</p>
+                    <p className="font-bold text-xl">{users.filter(u => u.status === 'active').length}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="bg-purple-100 p-2 rounded-lg">
+                    <CreditCard className="text-purple-600" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-sm">Total Transactions</p>
+                    <p className="font-bold text-xl">{transactions.length}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="bg-yellow-100 p-2 rounded-lg">
+                    <AlertTriangle className="text-yellow-600" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-sm">Pending Actions</p>
+                    <p className="font-bold text-xl">
+                      {transactions.filter(t => t.status === 'pending').length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="md:col-span-2 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <h3 className="font-bold text-lg mb-3">Recent Activity</h3>
+                <div className="space-y-2">
+                  {transactions.slice(0, 5).map(transaction => (
+                    <div key={transaction.id} className="flex justify-between text-sm">
+                      <span>{users.find(u => u.id === transaction.userId)?.name || transaction.userId}</span>
+                      <span className={`font-medium ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {transaction.type}: ₹{Math.abs(transaction.amount)}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        transaction.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {transaction.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="md:col-span-2 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <h3 className="font-bold text-lg mb-3">User Status Overview</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Active</span>
+                    <span className="font-medium">{users.filter(u => u.status === 'active').length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Frozen</span>
+                    <span className="font-medium">{users.filter(u => u.status === 'frozen').length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Banned</span>
+                    <span className="font-medium">{users.filter(u => u.status === 'banned').length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Inactive</span>
+                    <span className="font-medium">{users.filter(u => u.status === 'inactive').length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : activeTab === 'users' ? (
+            <div>
+              <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search users..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+                  <Filter size={18} />
+                  Filter
+                </button>
+              </div>
+              
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredUsers.map(user => (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div>
+                            <div className="font-medium">{user.name}</div>
+                            <div className="text-sm text-gray-500">{user.mobile}</div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            user.status === 'active' ? 'bg-green-100 text-green-800' :
+                            user.status === 'frozen' ? 'bg-yellow-100 text-yellow-800' :
+                            user.status === 'banned' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {user.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">₹{user.balance.toFixed(2)}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => setSelectedUser(user)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-full"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <button 
+                              onClick={() => updateUserStatus(user.id, user.status === 'active' ? 'frozen' : 'active')}
+                              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-full"
+                            >
+                              {user.status === 'active' ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : activeTab === 'transactions' ? (
+            <div>
+              <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search transactions..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+                  <Filter size={18} />
+                  Filter
+                </button>
+              </div>
+              
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredTransactions.map(transaction => (
+                      <tr key={transaction.id} className="hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          {users.find(u => u.id === transaction.userId)?.name || transaction.userId}
+                        </td>
+                        <td className="py-3 px-4 capitalize">{transaction.type}</td>
+                        <td className={`py-3 px-4 font-medium ${
+                          transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          ₹{Math.abs(transaction.amount)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            transaction.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {transaction.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-2">
+                            {transaction.status === 'pending' && (
+                              <>
+                                <button 
+                                  onClick={() => processTransaction(transaction.id, 'approve')}
+                                  className="p-1.5 text-green-600 hover:bg-green-100 rounded-full"
+                                >
+                                  <CheckCircle size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => processTransaction(transaction.id, 'reject')}
+                                  className="p-1.5 text-red-600 hover:bg-red-100 rounded-full"
+                                >
+                                  <XCircle size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h3 className="font-bold text-lg mb-4">Reports & Analytics</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                  <h4 className="font-medium mb-2">Daily Activity</h4>
+                  <p className="text-2xl font-bold text-blue-600">142</p>
+                  <p className="text-sm text-gray-500">users logged in</p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                  <h4 className="font-medium mb-2">Revenue</h4>
+                  <p className="text-2xl font-bold text-green-600">₹24,567</p>
+                  <p className="text-sm text-gray-500">this month</p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                  <h4 className="font-medium mb-2">Avg. Response Time</h4>
+                  <p className="text-2xl font-bold text-purple-600">2m 14s</p>
+                  <p className="text-sm text-gray-500">to customer queries</p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                  <h4 className="font-medium mb-2">Satisfaction Rate</h4>
+                  <p className="text-2xl font-bold text-yellow-600">94%</p>
+                  <p className="text-sm text-gray-500">of customers</p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                  <h4 className="font-medium mb-2">Issues Resolved</h4>
+                  <p className="text-2xl font-bold text-indigo-600">89%</p>
+                  <p className="text-sm text-gray-500">first contact resolution</p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                  <h4 className="font-medium mb-2">Active Disputes</h4>
+                  <p className="text-2xl font-bold text-red-600">5</p>
+                  <p className="text-sm text-gray-500">awaiting resolution</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
