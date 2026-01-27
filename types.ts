@@ -43,6 +43,8 @@ export interface User {
   lastSecurityActionDate?: string;
   referralEarnings?: number;
   lastProfitUpdate?: number;
+  role?: 'user' | 'customer_care' | 'admin';
+  isCustomerCareAgent?: boolean;
 }
 
 export interface CommunityPost {

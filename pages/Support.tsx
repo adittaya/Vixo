@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
 import { customerCareAI } from '../services/customerCareAI';
-import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield, Settings, Eye, EyeOff, MessageCircle, Lock, Unlock } from 'lucide-react';
+import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield, Settings, Eye, EyeOff, MessageCircle, Lock, Unlock, MonitorCog } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
 import * as ReactRouterDOM from 'react-router-dom';
 import EnhancedCustomerCare from '../components/EnhancedCustomerCare';
+import CustomerCareConsole from '../components/CustomerCareConsole';
 
 const { useNavigate } = ReactRouterDOM as any;
 const MotionDiv = motion.div as any;
@@ -22,6 +23,7 @@ const Support: React.FC<Props> = ({ user }) => {
   const [adminMode, setAdminMode] = useState(false);
   const [showAdminControls, setShowAdminControls] = useState(false);
   const [isEnhancedCustomerCareOpen, setIsEnhancedCustomerCareOpen] = useState(false);
+  const [isCustomerCareConsoleOpen, setIsCustomerCareConsoleOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -512,6 +514,16 @@ const Support: React.FC<Props> = ({ user }) => {
             <Settings size={16} />
           </button>
         )}
+
+        {/* Customer Care Console Button - Only visible to authorized customer care agents */}
+        {user.role === 'customer_care' || user.role === 'admin' || user.isCustomerCareAgent ? (
+          <button
+            onClick={() => setIsCustomerCareConsoleOpen(true)}
+            className="p-2 bg-gray-100 rounded-xl text-gray-600 active:scale-95 transition-all"
+          >
+            <MonitorCog size={16} />
+          </button>
+        ) : null}
       </header>
 
       {/* ADMIN CONTROLS PANEL */}
@@ -657,6 +669,13 @@ const Support: React.FC<Props> = ({ user }) => {
         isOpen={isEnhancedCustomerCareOpen}
         onClose={() => setIsEnhancedCustomerCareOpen(false)}
         isAdmin={false}
+      />
+
+      {/* Customer Care Console Component */}
+      <CustomerCareConsole
+        user={user}
+        isOpen={isCustomerCareConsoleOpen}
+        onClose={() => setIsCustomerCareConsoleOpen(false)}
       />
     </div>
   );
