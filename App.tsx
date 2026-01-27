@@ -184,12 +184,14 @@ const App: React.FC = () => {
           />
 
           {/* Enhanced Customer Care Component */}
-          <EnhancedCustomerCare
-            user={currentUser!}
-            isOpen={isEnhancedCustomerCareOpen}
-            onClose={() => setIsEnhancedCustomerCareOpen(false)}
-            isAdmin={false}
-          />
+          {currentUser && (
+            <EnhancedCustomerCare
+              user={currentUser}
+              isOpen={isEnhancedCustomerCareOpen}
+              onClose={() => setIsEnhancedCustomerCareOpen(false)}
+              isAdmin={false}
+            />
+          )}
         </div>
       </Router>
     </AppContext.Provider>
