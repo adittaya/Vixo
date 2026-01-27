@@ -4,6 +4,7 @@ import { generateImageDescription, parseImageContent, ImageAnalysisResult } from
 // State management for the router
 let currentState: 'chat' | 'image_analysis' = 'chat';
 let lastImageResult: string | null = null;
+let imageResultTimestamp: number | null = null; // Track when image result was created
 
 /**
  * Router / Orchestrator for Customer Care AI
@@ -25,12 +26,19 @@ export const customerCareRouter = {
 
       // Store the image result for context
       lastImageResult = structuredImageInfo;
+      imageResultTimestamp = Date.now();
 
       // Combine the user's message with the structured image info
       const combinedMessage = `${message}\n\nImage Analysis: ${structuredImageInfo}`;
 
       // Send to chat agent with image context
-      const response = await chatAI.getResponse(combinedMessage);
+      let response: string;
+      try {
+        response = await chatAI.getResponse(combinedMessage);
+      } catch (error) {
+        console.error("Error in chat AI during image processing:", error);
+        response = "Support is busy right now. Please wait a moment and try again. I'm here to help.";
+      }
 
       // CRITICAL: Reset to chat mode after processing image
       currentState = 'chat';
@@ -38,13 +46,29 @@ export const customerCareRouter = {
       return response;
     } else {
       // Just send the text message to the chat agent
-      // Include any previous image context if available
+      // Include any previous image context if available and not expired
       let fullMessage = message;
-      if (lastImageResult) {
-        fullMessage = `${message}\n\nPrevious Image Context: ${lastImageResult}`;
+      if (lastImageResult && imageResultTimestamp) {
+        // Expire image context after 5 minutes (300,000 ms)
+        const fiveMinutes = 5 * 60 * 1000;
+        if (Date.now() - imageResultTimestamp < fiveMinutes) {
+          fullMessage = `${message}\n\nPrevious Image Context: ${lastImageResult}`;
+        } else {
+          // Clear expired image context
+          lastImageResult = null;
+          imageResultTimestamp = null;
+        }
       }
 
-      return await chatAI.getResponse(fullMessage);
+      let response: string;
+      try {
+        response = await chatAI.getResponse(fullMessage);
+      } catch (error) {
+        console.error("Error in chat AI during text processing:", error);
+        response = "Support is busy right now. Please wait a moment and try again. I'm here to help.";
+      }
+
+      return response;
     }
   },
 
@@ -61,12 +85,19 @@ export const customerCareRouter = {
 
     // Store the image result for context
     lastImageResult = structuredImageInfo;
+    imageResultTimestamp = Date.now();
 
     // Create a message for the chat agent with image context
     const message = `User has submitted an image with the following description: "${description}".\n\n${structuredImageInfo}`;
 
     // Send to chat agent
-    const response = await chatAI.getResponse(message);
+    let response: string;
+    try {
+      response = await chatAI.getResponse(message);
+    } catch (error) {
+      console.error("Error in chat AI during image request processing:", error);
+      response = "Support is busy right now. Please wait a moment and try again. I'm here to help.";
+    }
 
     // CRITICAL: Reset to chat mode after processing image
     currentState = 'chat';
@@ -80,6 +111,7 @@ export const customerCareRouter = {
   resetState(): void {
     currentState = 'chat';
     lastImageResult = null;
+    imageResultTimestamp = null;
   },
 
   /**

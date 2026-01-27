@@ -48,10 +48,19 @@ export const chatAI = {
         apiKey: API_KEY
       });
 
-      // Try each model in the list until one succeeds
+      // MAXIMUM 3 models tried per request (as per forced system prompt)
+      let attempts = 0;
+      const maxAttempts = 3;
+
       for (const model of this.FREE_MODELS) {
+        if (attempts >= maxAttempts) {
+          break; // Stop after max attempts
+        }
+
+        attempts++;
+
         try {
-          console.log(`Trying model: ${model}`);
+          console.log(`Trying model: ${model} (attempt ${attempts}/${maxAttempts})`);
 
           const response = await openrouter.chat.send({
             model: model,
@@ -175,18 +184,19 @@ export const chatAI = {
 
           console.log(`Response received from ${model}`);
           const content = response.choices?.[0]?.message?.content || "No response from AI service.";
-          
+
           // Add a soft suggestion after the response
           return content + "\n\nYou can check available plans now.";
         } catch (modelError: any) {
-          console.log(`Model ${model} failed:`, modelError.message);
+          console.log(`Model ${model} failed (attempt ${attempts}):`, modelError.message);
           // Continue to the next model
           continue;
         }
       }
 
       // If all models failed
-      return "I'm sorry, all available AI models are currently unavailable. Please try again later.";
+      console.log("All models exhausted, returning fallback response");
+      return "Support is busy right now. Please wait a moment and try again. I'm here to help.";
     } catch (error: any) {
       console.error("Error in customer care chat AI:", error);
       console.error("Error details:", {
@@ -206,7 +216,7 @@ export const chatAI = {
       } else if (error.message?.includes('invalid api key')) {
         return "Invalid API key. The key may have been revoked or disabled.";
       } else {
-        return "I'm sorry, I'm having trouble connecting to the AI service. Please try again later.";
+        return "Support is busy right now. Please wait a moment and try again. I'm here to help.";
       }
     }
   }
