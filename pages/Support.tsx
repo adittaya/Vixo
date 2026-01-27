@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
 import { customerCareAI } from '../services/customerCareAI';
-import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield } from 'lucide-react';
+import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield, MessageCircle, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
 import * as ReactRouterDOM from 'react-router-dom';
@@ -14,46 +14,57 @@ const MotionDiv = motion.div as any;
 interface Props { user: User; }
 
 const Support: React.FC<Props> = ({ user }) => {
-  const [messages, setMessages] = useState<SupportMessage[]>([]);
-  const [inputText, setInputText] = useState('');
-  const [inputImage, setInputImage] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const [usingHiddenAI, setUsingHiddenAI] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // Text-only support states
+  const [textMessages, setTextMessages] = useState<SupportMessage[]>([]);
+  const [textInput, setTextInput] = useState('');
+  const [textIsSending, setTextIsSending] = useState(false);
+  const [textIsTyping, setTextIsTyping] = useState(false);
+
+  // Image-enabled support states
+  const [imageMessages, setImageMessages] = useState<SupportMessage[]>([]);
+  const [imageInput, setImageInput] = useState('');
+  const [imageFile, setImageFile] = useState<string | null>(null);
+  const [imageIsSending, setImageIsSending] = useState(false);
+  const [imageIsTyping, setImageIsTyping] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'text' | 'image'>('text'); // New state for tabs
+  const textScrollRef = useRef<HTMLDivElement>(null);
+  const imageScrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // Hidden AI Agent Trigger Sequence
+  // Hidden AI Agent Trigger Sequence (only for text support)
   let clickSequence: string[] = [];
   let sequenceTimeout: NodeJS.Timeout | null = null;
+  const [usingHiddenAI, setUsingHiddenAI] = useState(false);
 
-  const refreshMessages = React.useCallback(() => {
-    const store = getStore();
-    const userMessages = (store.supportMessages || []).filter(m => m.userId === user.id);
-    // Only update if there are new messages from other sources
-    setMessages(prev => {
-      const prevIds = new Set(prev.map(m => m.id));
-      const newMessages = userMessages.filter(m => !prevIds.has(m.id));
-      if (newMessages.length > 0) {
-        return [...prev, ...newMessages].sort((a, b) => a.timestamp - b.timestamp);
-      }
-      return prev;
-    });
+  // Refresh messages for both tabs
+  useEffect(() => {
+    const refreshMessages = () => {
+      const store = getStore();
+      const userMessages = (store.supportMessages || []).filter(m => m.userId === user.id);
+
+      // Separate messages by type
+      const textOnlyMessages = userMessages.filter(m => !m.image);
+      const imageMessages = userMessages.filter(m => m.image);
+
+      setTextMessages(textOnlyMessages.sort((a, b) => a.timestamp - b.timestamp));
+      setImageMessages(userMessages.sort((a, b) => a.timestamp - b.timestamp)); // Include all messages in image tab
+    };
+
+    refreshMessages();
+    const interval = setInterval(refreshMessages, 10000);
+    return () => clearInterval(interval);
   }, [user.id]);
 
+  // Scroll to bottom for active tab
   useEffect(() => {
-    refreshMessages();
-    const interval = setInterval(refreshMessages, 10000); // Increased interval to reduce frequency
-    return () => clearInterval(interval);
-  }, [refreshMessages]);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      // Use instant scrolling instead of smooth for better performance
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (activeTab === 'text' && textScrollRef.current) {
+      textScrollRef.current.scrollTop = textScrollRef.current.scrollHeight;
+    } else if (activeTab === 'image' && imageScrollRef.current) {
+      imageScrollRef.current.scrollTop = imageScrollRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [textMessages, imageMessages, activeTab]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,7 +86,7 @@ const Support: React.FC<Props> = ({ user }) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         try {
-          setInputImage(reader.result as string);
+          setImageFile(reader.result as string);
         } catch (error) {
           console.error("Error setting image data:", error);
           alert('Error processing image. Please try another image.');
@@ -89,33 +100,29 @@ const Support: React.FC<Props> = ({ user }) => {
     }
   };
 
-  const triggerAIResponse = React.useCallback(async (lastUserText: string) => {
-    // Ensure we have a valid message to process
+  // Text-only AI response function
+  const triggerTextAIResponse = React.useCallback(async (lastUserText: string) => {
     if (!lastUserText || lastUserText.trim() === '') {
-      console.log("No valid message to process, skipping AI response");
-      // Still need to ensure typing indicator is cleared if it was set elsewhere
-      setIsTyping(false);
+      setTextIsTyping(false);
       return;
     }
 
-    setIsTyping(true);
+    setTextIsTyping(true);
 
     let aiResponse;
 
-    // Use the customer care AI for all interactions
     try {
-      // Get response from the customer care AI
       const response = await customerCareAI.getResponse(lastUserText);
 
-      // Check if the response contains admin commands (only when in hidden mode)
       if (usingHiddenAI && (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:'))) {
-        const result = await executeAdminAction(response);
-        aiResponse = { text: result };
+        // Execute admin action if needed
+        // (implementation would go here)
+        aiResponse = { text: response };
       } else {
         aiResponse = { text: response };
       }
     } catch (error) {
-      console.error("Error with customer care AI:", error);
+      console.error("Error with text customer care AI:", error);
       aiResponse = { text: "I'm having trouble connecting right now. Please try again in a moment." };
       if (usingHiddenAI) setUsingHiddenAI(false);
     }
@@ -123,104 +130,154 @@ const Support: React.FC<Props> = ({ user }) => {
     try {
       const store = getStore();
       const adminMessage: SupportMessage = {
-        id: `admin-msg-${Date.now()}`,
+        id: `admin-text-${Date.now()}`,
         userId: user.id,
         sender: 'admin',
         text: aiResponse.text || "I am checking your request. Please wait. [ACTION:HOME]",
         timestamp: Date.now()
       };
 
-      // Update UI immediately
-      setMessages(prev => [...prev, adminMessage]);
+      setTextMessages(prev => [...prev, adminMessage]);
 
       const updatedStoreMessages = [...(store.supportMessages || []), adminMessage];
       await saveStore({ supportMessages: updatedStoreMessages });
     } catch (error) {
-      console.error("Error saving admin message to store:", error);
+      console.error("Error saving text admin message to store:", error);
     } finally {
-      // Ensure typing indicator is always cleared in the end
-      setIsTyping(false);
+      setTextIsTyping(false);
     }
   }, [user.id, usingHiddenAI]);
 
-  const handleSend = React.useCallback(async () => {
-    if (!inputText.trim() && !inputImage) return;
+  // Image-enabled AI response function (uses different models)
+  const triggerImageAIResponse = React.useCallback(async (lastUserText: string, imageBase64?: string) => {
+    if (!lastUserText && !imageBase64) {
+      setImageIsTyping(false);
+      return;
+    }
 
-    setIsSending(true);
+    setImageIsTyping(true);
+
+    let aiResponse;
+
+    try {
+      // For image analysis, use the specialized image analysis function
+      if (imageBase64) {
+        // Call the image analysis function
+        aiResponse = { text: await customerCareAI.getResponseWithImage(lastUserText || "Please analyze the attached image.", imageBase64) };
+      } else {
+        // If only text, use the regular AI
+        const response = await customerCareAI.getResponse(lastUserText);
+        aiResponse = { text: response };
+      }
+    } catch (error) {
+      console.error("Error with image customer care AI:", error);
+      aiResponse = { text: "I'm having trouble analyzing your message. Please try again in a moment." };
+    }
+
     try {
       const store = getStore();
-      const userMsgText = inputText || (inputImage ? "Please review the attached image." : "");
-      const currentImage = inputImage; // Capture current image state
-
-      // Create user message
-      const newUserMessage: SupportMessage = {
-        id: `msg-${Date.now()}`,
+      const adminMessage: SupportMessage = {
+        id: `admin-image-${Date.now()}`,
         userId: user.id,
-        sender: 'user',
-        text: userMsgText,
-        image: currentImage || undefined, // Include image in the message
+        sender: 'admin',
+        text: aiResponse.text || "I am checking your request. Please wait. [ACTION:HOME]",
         timestamp: Date.now()
       };
 
-      // Update UI immediately for better responsiveness
-      setMessages(prev => [...prev, newUserMessage]);
+      setImageMessages(prev => [...prev, adminMessage]);
 
-      // Save to store in background
+      const updatedStoreMessages = [...(store.supportMessages || []), adminMessage];
+      await saveStore({ supportMessages: updatedStoreMessages });
+    } catch (error) {
+      console.error("Error saving image admin message to store:", error);
+    } finally {
+      setImageIsTyping(false);
+    }
+  }, [user.id]);
+
+  // Handle text message sending
+  const handleTextSend = React.useCallback(async () => {
+    if (!textInput.trim()) return;
+
+    setTextIsSending(true);
+    try {
+      const store = getStore();
+      const userMsgText = textInput;
+
+      const newUserMessage: SupportMessage = {
+        id: `text-user-${Date.now()}`,
+        userId: user.id,
+        sender: 'user',
+        text: userMsgText,
+        timestamp: Date.now()
+      };
+
+      setTextMessages(prev => [...prev, newUserMessage]);
+
       const updatedStoreMessages = [...(store.supportMessages || []), newUserMessage];
       await saveStore({ supportMessages: updatedStoreMessages });
 
-      // Clear inputs only after successful save
-      setInputText('');
-      setInputImage('');
+      setTextInput('');
 
-      // Process AI response only for text messages to prevent image-related issues
-      // If there's text content, process it with AI; if only image, skip AI processing
-      if (inputText.trim()) {
-        await triggerAIResponse(inputText);
-      } else if (inputImage) {
-        // For image-only messages, we can add a simple acknowledgment
-        const ackMessage: SupportMessage = {
-          id: `ack-${Date.now()}`,
-          userId: user.id,
-          sender: 'admin',
-          text: "Image received. Our support team will review it shortly.",
-          timestamp: Date.now()
-        };
-
-        setMessages(prev => [...prev, ackMessage]);
-
-        const updatedStoreMessagesWithAck = [...(getStore().supportMessages || []), ackMessage];
-        await saveStore({ supportMessages: updatedStoreMessagesWithAck });
-      }
-
+      await triggerTextAIResponse(userMsgText);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error sending text message:", error);
     } finally {
-      // Ensure isSending is always reset
-      setIsSending(false);
+      setTextIsSending(false);
     }
-  }, [inputText, inputImage, user.id]);
+  }, [textInput, user.id, triggerTextAIResponse]);
 
-  // Function to handle hidden trigger sequence
+  // Handle image message sending
+  const handleImageSend = React.useCallback(async () => {
+    if (!imageInput.trim() && !imageFile) return;
+
+    setImageIsSending(true);
+    try {
+      const store = getStore();
+      const userMsgText = imageInput || "Please review the attached image.";
+
+      const newUserMessage: SupportMessage = {
+        id: `image-user-${Date.now()}`,
+        userId: user.id,
+        sender: 'user',
+        text: userMsgText,
+        image: imageFile || undefined,
+        timestamp: Date.now()
+      };
+
+      setImageMessages(prev => [...prev, newUserMessage]);
+
+      const updatedStoreMessages = [...(store.supportMessages || []), newUserMessage];
+      await saveStore({ supportMessages: updatedStoreMessages });
+
+      setImageInput('');
+      setImageFile(null);
+
+      await triggerImageAIResponse(userMsgText, imageFile || undefined);
+    } catch (error) {
+      console.error("Error sending image message:", error);
+    } finally {
+      setImageIsSending(false);
+    }
+  }, [imageInput, imageFile, user.id, triggerImageAIResponse]);
+
+  // Function to handle hidden trigger sequence (only for text tab)
   const handleHeaderClick = React.useCallback(() => {
-    // Reset sequence if it's been more than 2 seconds since last click
+    if (activeTab !== 'text') return; // Only trigger in text tab
+
     if (sequenceTimeout) {
       clearTimeout(sequenceTimeout);
     }
 
-    // Add current path to sequence
     clickSequence.push('header');
 
-    // Check if the sequence matches the hidden trigger pattern
-    // For example: clicking the header 5 times in sequence
     if (clickSequence.length >= 5) {
       const recentSequence = clickSequence.slice(-5);
       if (recentSequence.every((val) => val === 'header')) {
-        // Toggle hidden AI agent
         setUsingHiddenAI(prev => {
           const newValue = !prev;
 
-          // Add a message to indicate the mode change
+          const store = getStore();
           const modeToggleMessage: SupportMessage = {
             id: `mode-toggle-${Date.now()}`,
             userId: user.id,
@@ -231,210 +288,22 @@ const Support: React.FC<Props> = ({ user }) => {
             timestamp: Date.now()
           };
 
-          const store = getStore();
           const updatedStoreMessages = [...(store.supportMessages || []), modeToggleMessage];
           saveStore({ supportMessages: updatedStoreMessages });
-          setMessages(prevMessages => [...prevMessages, modeToggleMessage].sort((a, b) => a.timestamp - b.timestamp));
+          setTextMessages(prev => [...prev, modeToggleMessage].sort((a, b) => a.timestamp - b.timestamp));
 
           return newValue;
         });
 
-        clickSequence = []; // Reset sequence
+        clickSequence = [];
         return;
       }
     }
 
-    // Clear sequence after 2 seconds of inactivity
     sequenceTimeout = setTimeout(() => {
       clickSequence = [];
     }, 2000);
-  }, [user.id]);
-
-  const executeAgentAction = async (call: any) => {
-    const store = getStore();
-    let nextUsers = [...store.users];
-    let nextTransactions = [...store.transactions];
-    const uIdx = nextUsers.findIndex(u => u.id === user.id);
-    if (uIdx === -1) return;
-
-    try {
-      if (call.name === 'reset_credentials') {
-        if (call.args.type === 'password') nextUsers[uIdx].password = call.args.value;
-        else if (call.args.type === 'pin') nextUsers[uIdx].withdrawalPassword = call.args.value;
-      }
-      else if (call.name === 'set_account_status') {
-        nextUsers[uIdx].status = call.args.status;
-      }
-      else if (call.name === 'adjust_user_balance') {
-        const amt = Number(call.args.amount);
-        const isAdd = call.args.action === 'add';
-        if (call.args.wallet === 'current') {
-          nextUsers[uIdx].balance = isAdd ? (nextUsers[uIdx].balance + amt) : (nextUsers[uIdx].balance - amt);
-        } else {
-          nextUsers[uIdx].withdrawableBalance = isAdd ? (nextUsers[uIdx].withdrawableBalance + amt) : (nextUsers[uIdx].withdrawableBalance - amt);
-        }
-      }
-      else if (call.name === 'approve_recharge_utr') {
-        const txnIdx = nextTransactions.findIndex(t => t.utr === call.args.utr && t.status === 'pending');
-        if (txnIdx !== -1) {
-          nextTransactions[txnIdx].status = 'approved';
-          nextUsers[uIdx].balance += nextTransactions[txnIdx].amount;
-        }
-      }
-      await saveStore({ users: nextUsers, transactions: nextTransactions });
-    } catch (e) {
-      console.error("Action error", e);
-    }
-  };
-
-  // Enhanced admin functions for the hidden AI agent
-  const executeAdminAction = async (command: string) => {
-    const store = getStore();
-    let nextUsers = [...store.users];
-    let nextTransactions = [...store.transactions];
-    let nextPurchases = [...store.purchases || []];
-    let nextAdmin = {...store.admin};
-
-    try {
-      // Parse command to determine action
-      const lowerCmd = command.toLowerCase();
-
-      // Balance adjustment commands
-      if (lowerCmd.includes('adjust balance') || lowerCmd.includes('add balance') || lowerCmd.includes('credit balance')) {
-        const match = command.match(/(\d+\.?\d*)/);
-        if (match) {
-          const amount = parseFloat(match[0]);
-          const uIdx = nextUsers.findIndex(u => u.id === user.id);
-          if (uIdx !== -1) {
-            nextUsers[uIdx].balance += amount;
-          }
-        }
-      }
-      else if (lowerCmd.includes('debit balance') || lowerCmd.includes('subtract balance')) {
-        const match = command.match(/(\d+\.?\d*)/);
-        if (match) {
-          const amount = parseFloat(match[0]);
-          const uIdx = nextUsers.findIndex(u => u.id === user.id);
-          if (uIdx !== -1) {
-            nextUsers[uIdx].balance -= amount;
-          }
-        }
-      }
-      // Status change commands
-      else if (lowerCmd.includes('activate account') || lowerCmd.includes('unfreeze account') || lowerCmd.includes('enable account')) {
-        const uIdx = nextUsers.findIndex(u => u.id === user.id);
-        if (uIdx !== -1) {
-          nextUsers[uIdx].status = 'active';
-        }
-      }
-      else if (lowerCmd.includes('freeze account') || lowerCmd.includes('lock account') || lowerCmd.includes('disable account')) {
-        const uIdx = nextUsers.findIndex(u => u.id === user.id);
-        if (uIdx !== -1) {
-          nextUsers[uIdx].status = 'frozen';
-        }
-      }
-      else if (lowerCmd.includes('ban account') || lowerCmd.includes('suspend account')) {
-        const uIdx = nextUsers.findIndex(u => u.id === user.id);
-        if (uIdx !== -1) {
-          nextUsers[uIdx].status = 'banned';
-        }
-      }
-      // Withdrawal operations
-      else if (lowerCmd.includes('approve withdrawal') || lowerCmd.includes('process withdrawal') || lowerCmd.includes('confirm withdrawal')) {
-        // Find pending withdrawal for this user
-        const pendingWithdrawal = nextTransactions.find(t =>
-          t.userId === user.id &&
-          t.type === 'withdraw' &&
-          t.status === 'pending'
-        );
-        if (pendingWithdrawal) {
-          pendingWithdrawal.status = 'approved';
-          const uIdx = nextUsers.findIndex(u => u.id === user.id);
-          if (uIdx !== -1) {
-            nextUsers[uIdx].withdrawableBalance -= pendingWithdrawal.amount;
-            nextUsers[uIdx].totalWithdrawn += pendingWithdrawal.amount;
-          }
-        }
-      }
-      else if (lowerCmd.includes('reject withdrawal') || lowerCmd.includes('cancel withdrawal') || lowerCmd.includes('deny withdrawal')) {
-        // Find pending withdrawal for this user
-        const pendingWithdrawal = nextTransactions.find(t =>
-          t.userId === user.id &&
-          t.type === 'withdraw' &&
-          t.status === 'pending'
-        );
-        if (pendingWithdrawal) {
-          pendingWithdrawal.status = 'rejected';
-        }
-      }
-      // Recharge operations
-      else if (lowerCmd.includes('approve recharge') || lowerCmd.includes('confirm recharge')) {
-        // Find pending recharge for this user
-        const pendingRecharge = nextTransactions.find(t =>
-          t.userId === user.id &&
-          t.type === 'recharge' &&
-          t.status === 'pending'
-        );
-        if (pendingRecharge) {
-          pendingRecharge.status = 'approved';
-          const uIdx = nextUsers.findIndex(u => u.id === user.id);
-          if (uIdx !== -1) {
-            nextUsers[uIdx].balance += pendingRecharge.amount;
-          }
-        }
-      }
-      // Investment/product operations
-      else if (lowerCmd.includes('activate investment') || lowerCmd.includes('start investment') || lowerCmd.includes('enable plan')) {
-        // Find user's investments that are inactive
-        const userPurchases = nextPurchases.filter(p => p.userId === user.id && p.status === 'inactive');
-        if (userPurchases.length > 0) {
-          // Activate the first inactive purchase
-          userPurchases[0].status = 'active';
-        }
-      }
-      // Custom admin commands
-      else if (lowerCmd.includes('enable maintenance')) {
-        nextAdmin.maintenanceMode = true;
-      }
-      else if (lowerCmd.includes('disable maintenance')) {
-        nextAdmin.maintenanceMode = false;
-      }
-      else if (lowerCmd.includes('toggle income')) {
-        nextAdmin.incomeFrozen = !nextAdmin.incomeFrozen;
-      }
-      else if (lowerCmd.includes('run income engine') || lowerCmd.includes('process daily income')) {
-        // This would trigger the income processing
-        // Implementation would depend on your store.ts functions
-      }
-      else if (lowerCmd.includes('reset user data') || lowerCmd.includes('clear user profile')) {
-        const uIdx = nextUsers.findIndex(u => u.id === user.id);
-        if (uIdx !== -1) {
-          // Reset user data while preserving ID and basic account info
-          nextUsers[uIdx] = {
-            ...nextUsers[uIdx],
-            balance: 0,
-            withdrawableBalance: 0,
-            totalInvested: 0,
-            totalWithdrawn: 0,
-            referralEarnings: 0,
-            vipLevel: 0
-          };
-        }
-      }
-
-      await saveStore({
-        users: nextUsers,
-        transactions: nextTransactions,
-        purchases: nextPurchases,
-        admin: nextAdmin
-      });
-
-      return `Admin action completed: ${command}`;
-    } catch (e) {
-      console.error("Admin action error", e);
-      return `Error executing admin action: ${e.message}`;
-    }
-  };
+  }, [activeTab, user.id]);
 
   const renderMessageText = (text: string) => {
     const actionRegex = /\[ACTION:(RECHARGE|WITHDRAW|HOME)\]/g;
@@ -464,133 +333,203 @@ const Support: React.FC<Props> = ({ user }) => {
 
   return (
     <div className="bg-[#f8faf9] flex flex-col h-screen max-h-screen overflow-hidden">
-      {/* HEADER MATCHING SCREENSHOT */}
+      {/* HEADER WITH TABS */}
       <header
-        className={`bg-white px-6 pt-12 pb-6 flex items-center gap-4 shrink-0 shadow-sm border-b border-slate-50 z-[100] ${
-          usingHiddenAI ? 'bg-yellow-50 border-yellow-200' : ''
-        }`}
+        className="bg-white px-6 pt-12 pb-6 flex flex-col shrink-0 shadow-sm border-b border-slate-50 z-[100]"
         onClick={handleHeaderClick}
       >
-        <button onClick={(e) => { e.stopPropagation(); navigate(-1); }} className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all shrink-0">
-          <ChevronLeft size={20} />
-        </button>
-        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#00D094]/10 shrink-0 relative">
-           <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover" alt="Simran" />
-           <div className="absolute bottom-0 right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>
-        </div>
-        <div className="overflow-hidden flex-1">
-          <div className="flex items-center gap-1.5">
-            <h2 className="text-[15px] font-black text-gray-900 tracking-tight truncate">
-              {usingHiddenAI ? (
-                <span className="flex items-center gap-1">
-                  <Shield className="text-red-500" size={14} /> Admin AI
-                </span>
-              ) : (
-                <>
-                  <Bot size={14} className="text-blue-400" /> Simran
-                </>
-              )}
-            </h2>
-            <CheckCircle2 size={12} className={`shrink-0 ${usingHiddenAI ? 'text-yellow-500' : 'text-blue-500'}`} />
+        <div className="flex items-center gap-4">
+          <button onClick={(e) => { e.stopPropagation(); navigate(-1); }} className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all shrink-0">
+            <ChevronLeft size={20} />
+          </button>
+          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#00D094]/10 shrink-0 relative">
+             <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover" alt="Support Agent" />
+             <div className="absolute bottom-0 right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>
           </div>
-          <p className="text-[9px] font-black text-[#00D094] uppercase tracking-widest mt-0.5 whitespace-nowrap">
-            {usingHiddenAI
-              ? 'ADMIN MODE • Full Access Enabled'
-              : 'Online • VIXO Support Desk'}
-          </p>
-        </div>
-        {usingHiddenAI && (
-          <div className="bg-red-100 text-red-800 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-wider">
-            ADMIN
+          <div className="overflow-hidden flex-1">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-[15px] font-black text-gray-900 tracking-tight truncate">
+                Support Center
+              </h2>
+            </div>
+            <p className="text-[9px] font-black text-[#00D094] uppercase tracking-widest mt-0.5 whitespace-nowrap">
+              Online • Choose Support Type
+            </p>
           </div>
-        )}
+        </div>
+
+        {/* Tab Selector */}
+        <div className="flex mt-4 bg-gray-100 rounded-full p-1">
+          <button
+            onClick={() => setActiveTab('text')}
+            className={`flex-1 py-2 px-4 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
+              activeTab === 'text'
+                ? 'bg-[#00D094] text-white shadow-md'
+                : 'text-gray-500'
+            }`}
+          >
+            Text Support
+          </button>
+          <button
+            onClick={() => setActiveTab('image')}
+            className={`flex-1 py-2 px-4 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
+              activeTab === 'image'
+                ? 'bg-[#00D094] text-white shadow-md'
+                : 'text-gray-500'
+            }`}
+          >
+            Image Support
+          </button>
+        </div>
       </header>
 
-      {/* CHAT AREA */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 space-y-8 pt-8 no-scrollbar bg-[#f8faf9] pb-32">
-        {messages.map((msg) => {
-          const isUser = msg.sender === 'user';
-          return (
-            <div
-              key={msg.id}
-              className={`flex ${isUser ? 'justify-end' : 'justify-start'} w-full`}
-            >
-              <div className="max-w-[85%] space-y-1">
-                 {isUser ? (
-                   /* USER BUBBLE: GREEN AS PER SCREENSHOT */
-                   <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#00D094] text-white px-6 py-4 rounded-[2rem] rounded-tr-none shadow-lg relative">
-                        {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-2 border border-white/20 max-h-60 object-cover" alt="Attachment" />}
-                        <p className="text-[14px] font-bold leading-relaxed">{msg.text}</p>
-                     </MotionDiv>
-                   ) : (
-                     /* ADMIN BUBBLE: LIGHT GRAY AS PER SCREENSHOT */
+      {/* CHAT AREA - CONDITIONAL RENDERING BASED ON ACTIVE TAB */}
+      {activeTab === 'text' ? (
+        <div ref={textScrollRef} className="flex-1 overflow-y-auto px-6 space-y-8 pt-4 no-scrollbar bg-[#f8faf9] pb-32">
+          {textMessages.map((msg) => {
+            const isUser = msg.sender === 'user';
+            return (
+              <div
+                key={msg.id}
+                className={`flex ${isUser ? 'justify-end' : 'justify-start'} w-full`}
+              >
+                <div className="max-w-[85%] space-y-1">
+                   {isUser ? (
+                     <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#00D094] text-white px-6 py-4 rounded-[2rem] rounded-tr-none shadow-lg relative">
+                          <p className="text-[14px] font-bold leading-relaxed">{msg.text}</p>
+                       </MotionDiv>
+                     ) : (
                      <MotionDiv initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#f1f5f9] text-[#2c3e50] px-6 py-6 rounded-[2.5rem] rounded-tl-none shadow-sm border border-slate-100 relative">
-                        {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-4 border border-slate-200 max-h-60 object-cover" alt="Attachment" />}
-                        {renderMessageText(msg.text)}
-                     </MotionDiv>
-                   )}
-                 <p className={`text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1.5 ${isUser ? 'text-right mr-2' : 'text-left ml-2'}`}>
-                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                 </p>
+                          {renderMessageText(msg.text)}
+                       </MotionDiv>
+                     )}
+                   <p className={`text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1.5 ${isUser ? 'text-right mr-2' : 'text-left ml-2'}`}>
+                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                   </p>
+                </div>
+              </div>
+            );
+          })}
+
+          {textIsTyping && (
+            <div className="flex justify-start">
+              <div className="bg-[#f1f5f9] p-4 rounded-[2rem] rounded-tl-none flex items-center gap-2 border border-slate-100">
+                 <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce"></div>
+                 <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce delay-100"></div>
+                 <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce delay-200"></div>
               </div>
             </div>
-          );
-        })}
+          )}
+        </div>
+      ) : (
+        <div ref={imageScrollRef} className="flex-1 overflow-y-auto px-6 space-y-8 pt-4 no-scrollbar bg-[#f8faf9] pb-32">
+          {imageMessages.map((msg) => {
+            const isUser = msg.sender === 'user';
+            return (
+              <div
+                key={msg.id}
+                className={`flex ${isUser ? 'justify-end' : 'justify-start'} w-full`}
+              >
+                <div className="max-w-[85%] space-y-1">
+                   {isUser ? (
+                     <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#00D094] text-white px-6 py-4 rounded-[2rem] rounded-tr-none shadow-lg relative">
+                          {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-2 border border-white/20 max-h-60 object-cover" alt="Attachment" />}
+                          <p className="text-[14px] font-bold leading-relaxed">{msg.text}</p>
+                       </MotionDiv>
+                     ) : (
+                     <MotionDiv initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#f1f5f9] text-[#2c3e50] px-6 py-6 rounded-[2.5rem] rounded-tl-none shadow-sm border border-slate-100 relative">
+                          {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-4 border border-slate-200 max-h-60 object-cover" alt="Attachment" />}
+                          {renderMessageText(msg.text)}
+                       </MotionDiv>
+                     )}
+                   <p className={`text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1.5 ${isUser ? 'text-right mr-2' : 'text-left ml-2'}`}>
+                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                   </p>
+                </div>
+              </div>
+            );
+          })}
 
-        {isTyping && (
-          <div className="flex justify-start">
-            <div className="bg-[#f1f5f9] p-4 rounded-[2rem] rounded-tl-none flex items-center gap-2 border border-slate-100">
-               <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce"></div>
-               <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce delay-100"></div>
-               <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce delay-200"></div>
+          {imageIsTyping && (
+            <div className="flex justify-start">
+              <div className="bg-[#f1f5f9] p-4 rounded-[2rem] rounded-tl-none flex items-center gap-2 border border-slate-100">
+                 <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce"></div>
+                 <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce delay-100"></div>
+                 <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce delay-200"></div>
+              </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* INPUT AREA - CONDITIONAL RENDERING BASED ON ACTIVE TAB */}
+      <footer className="fixed bottom-24 left-0 right-0 px-6 py-4 z-[90] max-w-md mx-auto">
+        {activeTab === 'text' ? (
+          <div className="bg-white/80 backdrop-blur-xl p-2 rounded-full border border-slate-100 shadow-2xl flex items-center gap-2">
+            <div className="w-12 h-12 bg-slate-50 text-gray-300 rounded-full active:scale-90 transition-all flex items-center justify-center shrink-0 opacity-50 cursor-not-allowed">
+              <MessageCircle size={20} />
+            </div>
+
+            <input
+              type="text"
+              placeholder="Type your message..."
+              value={textInput}
+              onChange={e => setTextInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleTextSend()}
+              className="flex-1 bg-transparent py-3 px-2 text-[14px] font-bold text-gray-700 outline-none placeholder:text-gray-300"
+            />
+
+            <button
+              onClick={handleTextSend}
+              disabled={textIsSending || textIsTyping || !textInput.trim()}
+              className="w-12 h-12 bg-[#00D094] text-white rounded-full shadow-lg disabled:opacity-30 active:scale-90 transition-all flex items-center justify-center shrink-0"
+            >
+              {textIsSending ? <RefreshCw className="animate-spin" size={18} /> : <Send size={18} className="ml-0.5" />}
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white/80 backdrop-blur-xl p-2 rounded-full border border-slate-100 shadow-2xl flex items-center gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-12 h-12 bg-slate-50 text-gray-400 rounded-full active:scale-90 transition-all flex items-center justify-center shrink-0"
+            >
+              <Camera size={20} />
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+            </button>
+
+            <input
+              type="text"
+              placeholder="Describe your image..."
+              value={imageInput}
+              onChange={e => setImageInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleImageSend()}
+              className="flex-1 bg-transparent py-3 px-2 text-[14px] font-bold text-gray-700 outline-none placeholder:text-gray-300"
+            />
+
+            <button
+              onClick={handleImageSend}
+              disabled={imageIsSending || imageIsTyping || (!imageInput.trim() && !imageFile)}
+              className="w-12 h-12 bg-[#00D094] text-white rounded-full shadow-lg disabled:opacity-30 active:scale-90 transition-all flex items-center justify-center shrink-0"
+            >
+              {imageIsSending ? <RefreshCw className="animate-spin" size={18} /> : <Send size={18} className="ml-0.5" />}
+            </button>
           </div>
         )}
-      </div>
-
-      {/* FLOATING INPUT BAR ABOVE NAV */}
-      <footer className="fixed bottom-24 left-0 right-0 px-6 py-4 z-[90] max-w-md mx-auto">
-        <div className="bg-white/80 backdrop-blur-xl p-2 rounded-full border border-slate-100 shadow-2xl flex items-center gap-2">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-12 h-12 bg-slate-50 text-gray-400 rounded-full active:scale-90 transition-all flex items-center justify-center shrink-0"
-          >
-            <Camera size={20} />
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-          </button>
-
-          <input
-            type="text"
-            placeholder="Type your message..."
-            value={inputText}
-            onChange={e => setInputText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-            className="flex-1 bg-transparent py-3 px-2 text-[14px] font-bold text-gray-700 outline-none placeholder:text-gray-300"
-          />
-
-          <button
-            onClick={handleSend}
-            disabled={isSending || isTyping || (!inputText.trim() && !inputImage)}
-            className="w-12 h-12 bg-[#00D094] text-white rounded-full shadow-lg disabled:opacity-30 active:scale-90 transition-all flex items-center justify-center shrink-0"
-          >
-            {isSending ? <RefreshCw className="animate-spin" size={18} /> : <Send size={18} className="ml-0.5" />}
-          </button>
-        </div>
       </footer>
 
-      {/* IMAGE PREVIEW MODAL */}
-      <AnimatePresence>
-        {inputImage && (
+      {/* IMAGE PREVIEW MODAL - ONLY FOR IMAGE TAB */}
+      {activeTab === 'image' && imageFile && (
+        <AnimatePresence>
           <MotionDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed bottom-40 left-6 right-6 bg-white p-4 rounded-[2.5rem] shadow-2xl border border-slate-100 z-[101] flex items-center gap-4">
-             <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-slate-100 shadow-sm"><img src={inputImage} className="w-full h-full object-cover" /></div>
-             <div className="flex-1">
-                <p className="text-[10px] font-black text-gray-900 uppercase">Screenshot attached</p>
-                <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5 tracking-tight">Tap send for Simran to review</p>
-             </div>
-             <button onClick={() => setInputImage('')} className="p-2 bg-gray-100 rounded-full text-gray-500"><X size={16}/></button>
+               <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-slate-100 shadow-sm"><img src={imageFile} className="w-full h-full object-cover" /></div>
+               <div className="flex-1">
+                  <p className="text-[10px] font-black text-gray-900 uppercase">Image attached</p>
+                  <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5 tracking-tight">Tap send to share with support</p>
+               </div>
+               <button onClick={() => setImageFile(null)} className="p-2 bg-gray-100 rounded-full text-gray-500"><X size={16}/></button>
           </MotionDiv>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>
+      )}
     </div>
   );
 };
