@@ -16,7 +16,7 @@ interface Props { user: User; }
 const Support: React.FC<Props> = ({ user }) => {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [inputText, setInputText] = useState('');
-  const [inputImage, setInputImage] = useState('');
+  const [inputImage, setInputImage] = useState(''); // Kept for compatibility but not used
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [usingHiddenAI, setUsingHiddenAI] = useState(false);
@@ -144,21 +144,19 @@ const Support: React.FC<Props> = ({ user }) => {
   }, [user.id, usingHiddenAI]);
 
   const handleSend = React.useCallback(async () => {
-    if (!inputText.trim() && !inputImage) return;
+    if (!inputText.trim()) return; // Only allow text messages now
 
     setIsSending(true);
     try {
       const store = getStore();
-      const userMsgText = inputText || (inputImage ? "Sent an attachment." : "");
-      const currentImage = inputImage; // Capture current image state
+      const userMsgText = inputText; // Only text messages now
 
-      // Create user message
+      // Create user message (text only)
       const newUserMessage: SupportMessage = {
         id: `msg-${Date.now()}`,
         userId: user.id,
         sender: 'user',
         text: userMsgText,
-        image: currentImage || undefined,
         timestamp: Date.now()
       };
 
@@ -169,14 +167,12 @@ const Support: React.FC<Props> = ({ user }) => {
       const updatedStoreMessages = [...(store.supportMessages || []), newUserMessage];
       await saveStore({ supportMessages: updatedStoreMessages });
 
-      // Clear inputs only after successful save
+      // Clear text input only after successful save
       setInputText('');
-      setInputImage('');
 
       // Process AI response - await the response to ensure proper flow
-      // Important: Always trigger AI response for both text and image messages
-      // For image messages, we send a descriptive text to the AI (not the base64 data)
-      const aiMessage = userMsgText || (currentImage ? "User sent an image attachment for review." : "User sent a message.");
+      // Only process text messages now
+      const aiMessage = userMsgText;
 
       // Await the AI response to ensure proper sequencing
       await triggerAIResponse(aiMessage);
@@ -187,7 +183,7 @@ const Support: React.FC<Props> = ({ user }) => {
       // Ensure isSending is always reset
       setIsSending(false);
     }
-  }, [inputText, inputImage, user.id, triggerAIResponse]);
+  }, [inputText, user.id, triggerAIResponse]);
 
   // Function to handle hidden trigger sequence
   const handleHeaderClick = React.useCallback(() => {
@@ -539,26 +535,24 @@ const Support: React.FC<Props> = ({ user }) => {
       {/* FLOATING INPUT BAR ABOVE NAV */}
       <footer className="fixed bottom-24 left-0 right-0 px-6 py-4 z-[90] max-w-md mx-auto">
         <div className="bg-white/80 backdrop-blur-xl p-2 rounded-full border border-slate-100 shadow-2xl flex items-center gap-2">
-          <button 
-            onClick={() => fileInputRef.current?.click()} 
-            className="w-12 h-12 bg-slate-50 text-gray-400 rounded-full active:scale-90 transition-all flex items-center justify-center shrink-0"
-          >
+          {/* Removed image upload functionality to prevent system disruption */}
+          <div className="w-12 h-12 bg-slate-50 text-gray-300 rounded-full active:scale-90 transition-all flex items-center justify-center shrink-0 opacity-50 cursor-not-allowed">
             <Camera size={20} />
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-          </button>
-          
-          <input 
-            type="text" 
-            placeholder="Type your message..." 
-            value={inputText} 
-            onChange={e => setInputText(e.target.value)} 
-            onKeyDown={e => e.key === 'Enter' && handleSend()} 
-            className="flex-1 bg-transparent py-3 px-2 text-[14px] font-bold text-gray-700 outline-none placeholder:text-gray-300" 
+            {/* Image upload button is disabled to maintain system stability */}
+          </div>
+
+          <input
+            type="text"
+            placeholder="Type your message..."
+            value={inputText}
+            onChange={e => setInputText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            className="flex-1 bg-transparent py-3 px-2 text-[14px] font-bold text-gray-700 outline-none placeholder:text-gray-300"
           />
-          
-          <button 
-            onClick={handleSend} 
-            disabled={isSending || isTyping || (!inputText.trim() && !inputImage)} 
+
+          <button
+            onClick={handleSend}
+            disabled={isSending || isTyping || !inputText.trim()}
             className="w-12 h-12 bg-[#00D094] text-white rounded-full shadow-lg disabled:opacity-30 active:scale-90 transition-all flex items-center justify-center shrink-0"
           >
             {isSending ? <RefreshCw className="animate-spin" size={18} /> : <Send size={18} className="ml-0.5" />}
@@ -566,19 +560,8 @@ const Support: React.FC<Props> = ({ user }) => {
         </div>
       </footer>
 
-      {/* IMAGE PREVIEW MODAL */}
-      <AnimatePresence>
-        {inputImage && (
-          <MotionDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed bottom-40 left-6 right-6 bg-white p-4 rounded-[2.5rem] shadow-2xl border border-slate-100 z-[101] flex items-center gap-4">
-             <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-slate-100 shadow-sm"><img src={inputImage} className="w-full h-full object-cover" /></div>
-             <div className="flex-1">
-                <p className="text-[10px] font-black text-gray-900 uppercase">Screenshot attached</p>
-                <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5 tracking-tight">Tap send for Simran to review</p>
-             </div>
-             <button onClick={() => setInputImage('')} className="p-2 bg-gray-100 rounded-full text-gray-500"><X size={16}/></button>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      {/* Removed IMAGE PREVIEW MODAL as image functionality is disabled */}
+      {/* Image upload has been disabled to maintain system stability */}
     </div>
   );
 };
