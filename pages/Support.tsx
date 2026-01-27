@@ -144,13 +144,54 @@ const Support: React.FC<Props> = ({ user }) => {
   }, [user.id, usingHiddenAI]);
 
   const handleSend = React.useCallback(async () => {
-    if (!inputText.trim() && !inputImage) return;
+    // Check if the user is requesting to send an image
+    if (inputText.toLowerCase().includes('send') && (inputText.toLowerCase().includes('picture') || inputText.toLowerCase().includes('image') || inputText.toLowerCase().includes('photo'))) {
+      // Show a popup to request image upload
+      if (window.confirm("Would you like to submit an image request for admin review? You can attach an image and describe the issue.")) {
+        // Create an image request message that goes to admin panel
+        const imageRequestMessage: SupportMessage = {
+          id: `imgreq-${Date.now()}`,
+          userId: user.id,
+          sender: 'user',
+          text: `IMAGE REQUEST: ${inputText}`,
+          image: inputImage || undefined,
+          timestamp: Date.now()
+        };
+
+        // Save to store
+        const store = getStore();
+        const updatedStoreMessages = [...(store.supportMessages || []), imageRequestMessage];
+        await saveStore({ supportMessages: updatedStoreMessages });
+
+        // Show user feedback
+        const feedbackMessage: SupportMessage = {
+          id: `feedback-${Date.now()}`,
+          userId: user.id,
+          sender: 'admin',
+          text: "Your image request has been submitted to the admin panel. An admin will review it shortly.",
+          timestamp: Date.now()
+        };
+
+        setMessages(prev => [...prev, imageRequestMessage, feedbackMessage]);
+
+        const updatedStoreMessagesWithFeedback = [...(getStore().supportMessages || []), feedbackMessage];
+        await saveStore({ supportMessages: updatedStoreMessagesWithFeedback });
+
+        // Clear inputs
+        setInputText('');
+        setInputImage('');
+      }
+      setIsSending(false);
+      return;
+    }
+
+    // Regular text message handling
+    if (!inputText.trim()) return;
 
     setIsSending(true);
     try {
       const store = getStore();
-      const userMsgText = inputText || (inputImage ? "Please review the attached image." : "");
-      const currentImage = inputImage; // Capture current image state
+      const userMsgText = inputText;
 
       // Create user message
       const newUserMessage: SupportMessage = {
@@ -158,7 +199,6 @@ const Support: React.FC<Props> = ({ user }) => {
         userId: user.id,
         sender: 'user',
         text: userMsgText,
-        image: currentImage || undefined, // Include image in the message
         timestamp: Date.now()
       };
 
@@ -171,26 +211,10 @@ const Support: React.FC<Props> = ({ user }) => {
 
       // Clear inputs only after successful save
       setInputText('');
-      setInputImage('');
 
-      // Process AI response only for text messages to prevent image-related issues
-      // If there's text content, process it with AI; if only image, skip AI processing
+      // Process AI response for text messages
       if (inputText.trim()) {
         await triggerAIResponse(inputText);
-      } else if (inputImage) {
-        // For image-only messages, we can add a simple acknowledgment
-        const ackMessage: SupportMessage = {
-          id: `ack-${Date.now()}`,
-          userId: user.id,
-          sender: 'admin',
-          text: "Image received. Our support team will review it shortly.",
-          timestamp: Date.now()
-        };
-
-        setMessages(prev => [...prev, ackMessage]);
-
-        const updatedStoreMessagesWithAck = [...(getStore().supportMessages || []), ackMessage];
-        await saveStore({ supportMessages: updatedStoreMessagesWithAck });
       }
 
     } catch (error) {
@@ -199,7 +223,7 @@ const Support: React.FC<Props> = ({ user }) => {
       // Ensure isSending is always reset
       setIsSending(false);
     }
-  }, [inputText, inputImage, user.id]);
+  }, [inputText, inputImage, user.id, triggerAIResponse]);
 
   // Function to handle hidden trigger sequence
   const handleHeaderClick = React.useCallback(() => {
@@ -551,13 +575,12 @@ const Support: React.FC<Props> = ({ user }) => {
       {/* FLOATING INPUT BAR ABOVE NAV */}
       <footer className="fixed bottom-24 left-0 right-0 px-6 py-4 z-[90] max-w-md mx-auto">
         <div className="bg-white/80 backdrop-blur-xl p-2 rounded-full border border-slate-100 shadow-2xl flex items-center gap-2">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-12 h-12 bg-slate-50 text-gray-400 rounded-full active:scale-90 transition-all flex items-center justify-center shrink-0"
-          >
-            <Camera size={20} />
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-          </button>
+          {/* Only show camera button if there's an image to send */}
+          {inputImage && (
+            <div className="w-12 h-12 bg-slate-50 text-gray-400 rounded-full active:scale-90 transition-all flex items-center justify-center shrink-0">
+              <Camera size={20} />
+            </div>
+          )}
 
           <input
             type="text"
@@ -570,7 +593,7 @@ const Support: React.FC<Props> = ({ user }) => {
 
           <button
             onClick={handleSend}
-            disabled={isSending || isTyping || (!inputText.trim() && !inputImage)}
+            disabled={isSending || isTyping || !inputText.trim()}
             className="w-12 h-12 bg-[#00D094] text-white rounded-full shadow-lg disabled:opacity-30 active:scale-90 transition-all flex items-center justify-center shrink-0"
           >
             {isSending ? <RefreshCw className="animate-spin" size={18} /> : <Send size={18} className="ml-0.5" />}
@@ -578,14 +601,28 @@ const Support: React.FC<Props> = ({ user }) => {
         </div>
       </footer>
 
+      {/* IMAGE UPLOAD BUTTON - Only show when user wants to upload an image */}
+      {!inputImage && inputText.toLowerCase().includes('send') && (inputText.toLowerCase().includes('picture') || inputText.toLowerCase().includes('image') || inputText.toLowerCase().includes('photo')) && (
+        <div className="fixed bottom-36 left-0 right-0 px-6 z-[91] max-w-md mx-auto">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full bg-[#00D094] text-white py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg"
+          >
+            <Camera size={20} />
+            <span className="font-black uppercase tracking-wider text-sm">Attach Image</span>
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+          </button>
+        </div>
+      )}
+
       {/* IMAGE PREVIEW MODAL */}
       <AnimatePresence>
         {inputImage && (
           <MotionDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed bottom-40 left-6 right-6 bg-white p-4 rounded-[2.5rem] shadow-2xl border border-slate-100 z-[101] flex items-center gap-4">
              <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-slate-100 shadow-sm"><img src={inputImage} className="w-full h-full object-cover" /></div>
              <div className="flex-1">
-                <p className="text-[10px] font-black text-gray-900 uppercase">Screenshot attached</p>
-                <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5 tracking-tight">Tap send for Simran to review</p>
+                <p className="text-[10px] font-black text-gray-900 uppercase">Image attached</p>
+                <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5 tracking-tight">Tap send to submit to admin</p>
              </div>
              <button onClick={() => setInputImage('')} className="p-2 bg-gray-100 rounded-full text-gray-500"><X size={16}/></button>
           </MotionDiv>
