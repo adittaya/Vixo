@@ -170,7 +170,7 @@ const Support: React.FC<Props> = ({ user }) => {
     setIsSending(true); // Show loading state during submission
 
     try {
-      // First, analyze the image with the AI
+      // First, analyze the image with the AI using the router
       const aiResponse = await customerCareAI.analyzeImage(imageDescription, selectedImage);
 
       // Create image request message that goes to admin panel (but not to chat history)
