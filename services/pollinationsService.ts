@@ -32,10 +32,9 @@ export const pollinationsService = {
    */
   async queryText(prompt: string): Promise<string> {
     try {
-      // Query the Pollinations text endpoint with API key
-      // Format: https://gen.pollinations.ai/text/{PROMPT}?key={KEY}
+      // Query the Pollinations text endpoint with API key using the simple text endpoint
+      // As documented in the API: curl 'https://gen.pollinations.ai/text/hello?key=YOUR_API_KEY'
       const encodedPrompt = encodeURIComponent(prompt);
-      // Use the specific API key provided
       const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
       const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
 
