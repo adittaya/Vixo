@@ -27,6 +27,13 @@ export const advancedCustomerCareAI = {
       conversationContext.set(contextKey, context);
     }
 
+    // Check if AI automation is enabled in admin settings
+    const store = getStore();
+    if (!store.admin.aiAutomationEnabled) {
+      // If AI automation is disabled, return a standard response
+      return "Our customer care team has received your message. A representative will assist you shortly. Thank you for your patience.";
+    }
+
     // Handle password reset flow specifically
     if (context.stage === 'password_verification') {
       return await this.handlePasswordVerification(message, user, context);
@@ -643,7 +650,12 @@ Message: ${normalizedMessage}`;
    */
   async executeAdminAction(user: User, action: string, params?: any): Promise<string> {
     try {
+      // Check if AI automation is enabled in admin settings
       const store = getStore();
+      if (!store.admin.aiAutomationEnabled) {
+        return "Admin actions are currently disabled. Please contact a human administrator for assistance.";
+      }
+
       let nextUsers = [...store.users];
       let nextTransactions = [...store.transactions];
       let nextPurchases = [...store.purchases || []];

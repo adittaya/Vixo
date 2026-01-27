@@ -146,6 +146,7 @@ export interface AdminSettings {
   automaticIncomeTime: string;
   lastIncomeRun: string;
   preApprovedEnabled: boolean; // Auto-Credit System Toggle
+  aiAutomationEnabled: boolean; // AI Automation Toggle
   customProducts: Product[];
   rechargeUpiId: string;
   rechargeQrCode: string;

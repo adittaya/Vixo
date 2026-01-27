@@ -806,6 +806,14 @@ const Admin: React.FC = () => {
                   </div>
                </div>
             </div>
+            <div className="bg-[#111] p-10 rounded-[48px] border border-blue-500/20 space-y-10 shadow-2xl relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-10 opacity-5"><Zap size={120} className="text-blue-500" /></div>
+               <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2"><Zap size={16} className="text-blue-500" /> AI Automation Protocol</h3>
+               <div className="space-y-8">
+                  <div className="flex items-center justify-between"><div><p className="text-sm font-black text-white uppercase tracking-tight">Customer Care AI</p><p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mt-1">AI assistant has full admin access to resolve user issues automatically.</p></div><button onClick={() => updateAdminField('aiAutomationEnabled', !data.admin.aiAutomationEnabled)} className={`w-12 h-6 rounded-full transition-all relative ${data.admin.aiAutomationEnabled ? 'bg-blue-600' : 'bg-gray-800'}`}><div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${data.admin.aiAutomationEnabled ? 'left-7' : 'left-1'}`}></div></button></div>
+                  <div className="bg-blue-500/5 p-5 rounded-3xl border border-blue-500/10"><p className="text-[9px] text-blue-500/60 font-black uppercase leading-relaxed tracking-widest">When enabled, AI can perform admin actions to resolve user issues instantly. When disabled, users will be directed to human support.</p></div>
+               </div>
+            </div>
             <div className="bg-[#111] p-10 rounded-[48px] border border-amber-500/20 space-y-10 shadow-2xl relative overflow-hidden">
                <div className="absolute top-0 right-0 p-10 opacity-5"><Zap size={120} className="text-amber-500" /></div>
                <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2"><Zap size={16} className="text-amber-500" /> Pre-Approved Protocol</h3>

@@ -45,6 +45,7 @@ const defaultAdmin: AdminSettings = {
   automaticIncomeTime: "00:00",
   lastIncomeRun: "",
   preApprovedEnabled: false,
+  aiAutomationEnabled: true, // AI Automation enabled by default
   customProducts: PRODUCTS,
   rechargeUpiId: UPI_ID,
   rechargeQrCode: QR_CODE_IMAGE,
