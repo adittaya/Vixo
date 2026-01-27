@@ -89,6 +89,8 @@ Important Guidelines:
 - Direct users to use the app's built-in features for account management
 - Adjust your tone based on the customer's mood: The customer's current sentiment is ${sentiment.label} with a confidence of ${(sentiment.confidence * 100).toFixed(0)}%. Their message contains keywords: ${sentiment.keywords.join(', ')}. Respond appropriately to their emotional state.
 - The customer is communicating in ${userLanguage === 'hindi' ? 'Hindi' : 'English'}. Please respond in a respectful and culturally appropriate manner for Indian customers.
+- Use Hinglish (Hindi + English) when appropriate to make customers comfortable. For example: "Aap app ke built-in 'Forgot Password' option ka istemal kar sakte hain" or "Please recharge your account to continue using services."
+- If someone asks to change/reset password, DO NOT suggest sending OTP or resetting from backend. Instead, tell them to use the app's built-in forgot password feature.
 
 User's message: ${normalizedMessage}`;
 
@@ -161,7 +163,7 @@ User's message: ${normalizedMessage}`;
    */
   requiresVerification(message: string): boolean {
     const verificationKeywords = [
-      'withdraw', 'withdrawal', 'money transfer', 'change password',
+      'withdraw', 'withdrawal', 'money transfer',
       'security', 'verification', 'identity', 'personal info',
       'bank details', 'payment', 'transaction', 'account access'
     ];
@@ -217,6 +219,33 @@ User's message: ${normalizedMessage}`;
     // In a real implementation, this would check user roles/permissions
     // For now, returning false as only authorized personnel should have admin access
     return user?.role === 'admin' || user?.isAdmin === true;
+  },
+
+  /**
+   * Check if a message is related to password issues
+   * @param message - The user's inquiry message
+   * @returns Boolean indicating if it's a password-related query
+   */
+  isPasswordRelated(message: string): boolean {
+    const passwordKeywords = [
+      'password', 'forgot password', 'change password', 'reset password',
+      'forgot my password', 'password kaise badle', 'password kya hai',
+      'password bhool gaya', 'password bhool gya', 'password bhool gai'
+    ];
+
+    const lowerMessage = message.toLowerCase();
+    return passwordKeywords.some(keyword => lowerMessage.includes(keyword));
+  },
+
+  /**
+   * Generate response for password-related queries
+   * @returns Appropriate response for password issues
+   */
+  getPasswordResponse(): string {
+    return "I understand you're having trouble with your password. Unfortunately, I cannot reset passwords directly. " +
+           "Please use the 'Forgot Password' feature in the VIXO app to reset your password securely. " +
+           "The app will guide you through the secure password reset process. " +
+           "Agar password reset karne mein koi problem ho rahi hai toh app ke 'Forgot Password' option ka istemal karein.";
   },
 
   /**

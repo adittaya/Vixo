@@ -70,15 +70,39 @@ export const detectLanguage = (text: string): 'hindi' | 'english' => {
   if (isHindiText(text)) {
     return 'hindi';
   }
-  
+
   // Check for common Hindi words in Roman script
   const lowerText = text.toLowerCase();
+  let hindiWordCount = 0;
+  let englishWordCount = 0;
+
   for (const hindiWord of Object.keys(HINDI_ENGLISH_PHRASES)) {
     if (lowerText.includes(hindiWord)) {
-      return 'hindi';
+      hindiWordCount++;
     }
   }
-  
+
+  // Also check for common Hinglish patterns
+  const hinglishIndicators = ['ka', 'ke', 'ki', 'hai', 'hain', 'tha', 'the', 'ho', 'kar', 'karo', 'karte', 'raha', 'rahe', 'rahi'];
+  for (const indicator of hinglishIndicators) {
+    if (lowerText.includes(indicator)) {
+      hindiWordCount++;
+    }
+  }
+
+  // Count English words for comparison
+  const words = lowerText.split(/\s+/);
+  for (const word of words) {
+    if (/[a-z]+/.test(word)) {
+      englishWordCount++;
+    }
+  }
+
+  // If more Hindi/Hinglish indicators than English words, consider it Hindi
+  if (hindiWordCount > englishWordCount * 0.5) {
+    return 'hindi';
+  }
+
   return 'english';
 };
 
@@ -121,12 +145,16 @@ export const normalizeForProcessing = (text: string, targetLang: 'hindi' | 'engl
 // Function to get appropriate response based on detected language
 export const getResponseInUserLanguage = (userText: string, englishResponse: string): string => {
   const userLanguage = detectLanguage(userText);
-  
+
   if (userLanguage === 'hindi') {
-    // For now, return the English response with a note that we're working on Hindi translations
-    // In a full implementation, this would translate the response to Hindi
-    return `${englishResponse}\n\nNote: हम जल्द ही हिंदी में पूर्ण समर्थन प्रदान करेंगे। अभी के लिए, कृपया अंग्रेजी में बातचीत जारी रखें।`;
+    // Enhance response with Hinglish elements to make it more relatable
+    let hinglishResponse = englishResponse;
+
+    // Add Hinglish elements to make the response more culturally appropriate
+    hinglishResponse += "\n\nAgar aapko koi aur help chahiye, toh beshak batayein. Hum aapki madad ke liye hamesha tyar hain.";
+
+    return hinglishResponse;
   }
-  
+
   return englishResponse;
 };
