@@ -143,8 +143,15 @@ const Support: React.FC<Props> = ({ user }) => {
   }, [user.id, usingHiddenAI]);
 
   const handleSend = React.useCallback(async () => {
-    // Check if the user is requesting to send an image
-    if (inputText.toLowerCase().includes('send') && (inputText.toLowerCase().includes('picture') || inputText.toLowerCase().includes('image') || inputText.toLowerCase().includes('photo'))) {
+    // Check if the user is requesting to send an image or asking about image upload
+    const lowerText = inputText.toLowerCase();
+    const isImageRelated =
+      (lowerText.includes('send') && (lowerText.includes('picture') || lowerText.includes('image') || lowerText.includes('photo'))) ||
+      (lowerText.includes('upload') && (lowerText.includes('picture') || lowerText.includes('image') || lowerText.includes('photo') || lowerText.includes('screenshot'))) ||
+      (lowerText.includes('attach') && (lowerText.includes('picture') || lowerText.includes('image') || lowerText.includes('photo'))) ||
+      (lowerText.includes('how to') && (lowerText.includes('send') || lowerText.includes('upload')) && (lowerText.includes('picture') || lowerText.includes('image') || lowerText.includes('photo')));
+
+    if (isImageRelated) {
       // Show a popup to request image upload
       if (window.confirm("Would you like to submit an image request for admin review? You can attach an image and describe the issue.")) {
         // Create an image request message that goes to admin panel
