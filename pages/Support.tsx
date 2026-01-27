@@ -194,7 +194,16 @@ const Support: React.FC<Props> = ({ user }) => {
       };
 
       const finalStoreMessages = [...updatedStoreMessages, feedbackMessage];
-      await saveStore({ supportMessages: finalStoreMessages });
+
+      // Add better error handling for the save operation
+      try {
+        await saveStore({ supportMessages: finalStoreMessages });
+      } catch (saveError) {
+        console.error("Error saving image request to store:", saveError);
+        alert("Failed to save your request. Please try again.");
+        setIsSending(false);
+        return;
+      }
 
       // Show success state without adding to chat history
       setImageSubmitted(true);
