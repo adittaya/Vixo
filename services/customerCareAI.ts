@@ -17,15 +17,6 @@ export const customerCareAI = {
    * @returns The complete AI response
    */
   async getResponse(message: string, user?: any): Promise<string> {
-    // Import the advanced customer care AI
-    const { advancedCustomerCareAI } = await import('./advancedCustomerCareAI');
-
-    // If user object is provided, use the advanced system with user-specific features
-    if (user) {
-      return await advancedCustomerCareAI.getResponse(message, user);
-    }
-
-    // If no user provided, fall back to basic response
     try {
       // Detect user's language
       const userLanguage = detectLanguage(message);
@@ -37,6 +28,20 @@ export const customerCareAI = {
       const sentiment = analyzeSentimentAdvanced(normalizedMessage);
 
       // Format the message for Pollinations API with detailed VIXO training
+      // Include user context if available
+      const userContext = user ? `
+User Information:
+- Name: ${user.name}
+- Mobile: ${user.mobile}
+- Balance: ₹${user.balance}
+- Withdrawable Balance: ₹${user.withdrawableBalance}
+- Total Invested: ₹${user.totalInvested}
+- Total Withdrawn: ₹${user.totalWithdrawn}
+- VIP Level: ${user.vipLevel}
+- Registration Date: ${user.registrationDate}
+- Status: ${user.status}
+` : '';
+
       const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
 About VIXO:
@@ -65,11 +70,6 @@ What VIXO Application CAN Do:
 - Handle referral programs
 - Reset user passwords (with verification)
 - Assist with account access issues
-
-What VIXO Application CANNOT Do (Do NOT suggest these features):
-- Access user devices or browser sessions
-- Perform banking operations outside the platform
-- Provide financial advice beyond platform operations
 
 How You Help Users:
 - Listen carefully to user problems
@@ -103,6 +103,8 @@ Important Guidelines:
 - Simply solve the user's problem directly without explaining the internal process.
 - Focus on the outcome and user satisfaction rather than the technical steps taken.
 - When a problem is solved, simply confirm "Your problem has been solved" or similar positive confirmation.
+
+${userContext}
 
 User's message: ${normalizedMessage}`;
 

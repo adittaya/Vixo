@@ -35,10 +35,9 @@ export const pollinationsService = {
       // Query the Pollinations text endpoint with API key
       // Format: https://gen.pollinations.ai/text/{PROMPT}?key={KEY}
       const encodedPrompt = encodeURIComponent(prompt);
-      const apiKey = process.env.POLLINATIONS_API_KEY || (import.meta as any).env.VITE_POLLINATIONS_API_KEY;
-      const url = apiKey
-        ? `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`
-        : `https://gen.pollinations.ai/text/${encodedPrompt}`;
+      // Use the specific API key provided
+      const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
+      const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
 
       const response = await fetch(url, {
         headers: {

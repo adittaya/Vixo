@@ -49,7 +49,7 @@ app.post('/api/state', (req, res) => {
 });
 
 // Pollinations AI Endpoints
-const KEY = process.env.POLLINATIONS_API_KEY;
+const KEY = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
 const BASE = "https://gen.pollinations.ai";
 
 app.post("/api/ai/text", async (req, res) => {

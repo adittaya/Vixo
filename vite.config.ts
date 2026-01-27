@@ -12,12 +12,10 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.POLLINATIONS_API_KEY': JSON.stringify(env.POLLINATIONS_API_KEY),
-        'process.env.API_KEY': JSON.stringify(env.API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'import.meta.env.VITE_POLLINATIONS_API_KEY': JSON.stringify(env.VITE_POLLINATIONS_API_KEY || env.POLLINATIONS_API_KEY)
+        'process.env.POLLINATIONS_API_KEY': JSON.stringify('sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'),
+        'import.meta.env.VITE_POLLINATIONS_API_KEY': JSON.stringify('sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr')
       },
-      envPrefix: ['VITE_', 'POLLINATIONS_', 'GEMINI_'], // Expose these prefixes to client-side
+      envPrefix: ['VITE_', 'POLLINATIONS_'], // Expose these prefixes to client-side
       resolve: {
         alias: {
           // Fixed: Use path.resolve('.') to resolve the current working directory instead of process.cwd() to avoid typing issues.
