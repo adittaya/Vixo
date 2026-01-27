@@ -58,12 +58,27 @@ const Support: React.FC<Props> = ({ user }) => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file type and size before processing
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!validTypes.includes(file.type)) {
+        alert('Please upload a valid image file (JPEG, PNG, GIF, WEBP)');
+        return;
+      }
+
+      if (file.size > maxSize) {
+        alert('Image size exceeds 5MB limit. Please choose a smaller image.');
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setInputImage(reader.result as string);
       };
       reader.onerror = () => {
         console.error("Error reading image file");
+        alert('Error reading image file. Please try another image.');
       };
       reader.readAsDataURL(file);
     }
@@ -74,6 +89,7 @@ const Support: React.FC<Props> = ({ user }) => {
     if (!lastUserText || lastUserText.trim() === '') {
       console.log("No valid message to process, skipping AI response");
       // Still need to ensure typing indicator is cleared if it was set elsewhere
+      setIsTyping(false);
       return;
     }
 
@@ -102,23 +118,25 @@ const Support: React.FC<Props> = ({ user }) => {
       setIsTyping(false);
     }
 
-    const store = getStore();
-    const adminMessage: SupportMessage = {
-      id: `admin-msg-${Date.now()}`,
-      userId: user.id,
-      sender: 'admin',
-      text: aiResponse.text || "I am checking your request. Please wait. [ACTION:HOME]",
-      timestamp: Date.now()
-    };
-
-    // Update UI immediately
-    setMessages(prev => [...prev, adminMessage]);
-
-    const updatedStoreMessages = [...(store.supportMessages || []), adminMessage];
     try {
+      const store = getStore();
+      const adminMessage: SupportMessage = {
+        id: `admin-msg-${Date.now()}`,
+        userId: user.id,
+        sender: 'admin',
+        text: aiResponse.text || "I am checking your request. Please wait. [ACTION:HOME]",
+        timestamp: Date.now()
+      };
+
+      // Update UI immediately
+      setMessages(prev => [...prev, adminMessage]);
+
+      const updatedStoreMessages = [...(store.supportMessages || []), adminMessage];
       await saveStore({ supportMessages: updatedStoreMessages });
     } catch (error) {
       console.error("Error saving admin message to store:", error);
+      // Still ensure typing indicator is cleared even if saving fails
+      setIsTyping(false);
     }
   }, [user.id, usingHiddenAI]);
 
@@ -162,6 +180,8 @@ const Support: React.FC<Props> = ({ user }) => {
           await triggerAIResponse(aiMessage);
         } catch (error) {
           console.error("Error in AI response:", error);
+          // Ensure typing indicator is cleared even if AI response fails
+          setIsTyping(false);
         }
       }, 100); // Small delay to ensure UI updates
 
