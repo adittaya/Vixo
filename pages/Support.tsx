@@ -70,6 +70,13 @@ const Support: React.FC<Props> = ({ user }) => {
   };
 
   const triggerAIResponse = React.useCallback(async (lastUserText: string) => {
+    // Ensure we have a valid message to process
+    if (!lastUserText || lastUserText.trim() === '') {
+      console.log("No valid message to process, skipping AI response");
+      setIsTyping(false);
+      return;
+    }
+
     setIsTyping(true);
 
     let aiResponse;
@@ -90,9 +97,6 @@ const Support: React.FC<Props> = ({ user }) => {
       console.error("Error with customer care AI:", error);
       aiResponse = { text: "I'm having trouble connecting right now. Please try again in a moment." };
       if (usingHiddenAI) setUsingHiddenAI(false);
-    } finally {
-      // Ensure typing indicator is always cleared
-      setIsTyping(false);
     }
 
     const store = getStore();
@@ -112,6 +116,9 @@ const Support: React.FC<Props> = ({ user }) => {
       await saveStore({ supportMessages: updatedStoreMessages });
     } catch (error) {
       console.error("Error saving admin message to store:", error);
+    } finally {
+      // Ensure typing indicator is always cleared in the end
+      setIsTyping(false);
     }
   }, [user.id, usingHiddenAI]);
 
