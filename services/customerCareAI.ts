@@ -1,8 +1,8 @@
-import { customAIAgent } from './customAIAgent';
+import { pollinationsService } from './pollinationsService';
 
 /**
  * Customer Care AI Service
- * Uses custom AI agent backbone with OpenRouter API
+ * Uses Pollinations API as the primary model
  */
 export const customerCareAI = {
   /**
@@ -11,52 +11,22 @@ export const customerCareAI = {
    * @returns The complete AI response
    */
   async getResponse(message: string): Promise<string> {
-    // Try using OpenRouter API directly with the provided key
+    // Use Pollinations API directly with the provided key
     try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'openchat/openchat-7b',
-          messages: [
-            {
-              role: 'system',
-              content: `You are a helpful customer care assistant for VIXO investment platform.
-              Provide personalized support based on the user's information and needs.
-              Be professional, empathetic, and solution-oriented.
-              If the user has a problem, try to understand it and suggest appropriate solutions.
-              If the user needs help with their account, investments, withdrawals, or anything else, provide clear guidance.`
-            },
-            {
-              role: 'user',
-              content: message
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`OpenRouter API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0]?.message?.content || "I'm here, but things are a bit busy right now. Please try again in a moment.";
-    } catch (error) {
-      console.error("OpenRouter API error:", error);
-      // Fallback to custom agent if OpenRouter fails
-      // Enhance the message with customer care context
-      const enhancedMessage = `You are a helpful customer care assistant for VIXO investment platform.
+      // Format the message for Pollinations API
+      const prompt = `You are a helpful customer care assistant for VIXO investment platform.
       Provide personalized support based on the user's information and needs.
       Be professional, empathetic, and solution-oriented.
       If the user has a problem, try to understand it and suggest appropriate solutions.
       If the user needs help with their account, investments, withdrawals, or anything else, provide clear guidance.
 
-      Context: ${message}`;
+      User's message: ${message}`;
 
-      return await customAIAgent.processUserInput({ text: enhancedMessage });
+      const response = await pollinationsService.queryText(prompt);
+      return response;
+    } catch (error) {
+      console.error("Pollinations API error:", error);
+      return "I'm here, but things are a bit busy right now. Please try again in a moment.";
     }
   },
 

@@ -1,10 +1,10 @@
 /**
  * CUSTOM AI AGENT BACKBONE
- * OpenRouter implementation for image analysis and customer care
+ * Pollinations-only implementation for image analysis and customer care
  *
  * Implements the exact flow:
  * - OCR for image analysis
- * - OpenRouter for text processing
+ * - Pollinations for text processing
  * - Stateless processing
  * - Always reply guarantee
  */
@@ -86,7 +86,7 @@ export const customAIAgent = {
   },
 
   /**
-   * Handle text chat flow with OpenRouter
+   * Handle text chat flow with Pollinations
    */
   async handleTextChat(text: string, controller: AbortController): Promise<string> {
     try {
@@ -111,93 +111,25 @@ export const customAIAgent = {
 
         User's request: ${text}`;
 
-        // Try using OpenRouter API directly with the provided key
-        try {
-          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: 'openchat/openchat-7b',
-              messages: [
-                {
-                  role: 'system',
-                  content: `You are a helpful customer care assistant for VIXO investment platform.
-                  Provide personalized support based on the user's information and needs.
-                  Be professional, empathetic, and solution-oriented.
-                  If the user has a problem, try to understand it and suggest appropriate solutions.
-                  If the user needs help with their account, investments, withdrawals, or anything else, provide clear guidance.`
-                },
-                {
-                  role: 'user',
-                  content: enhancedPrompt
-                }
-              ]
-            })
-          });
+        // Use Pollinations service for customer care queries
+        const response = await this.runWithTimeoutAndAbort(
+          pollinationsService.queryText(enhancedPrompt),
+          5000, // 5 seconds timeout for more complex queries
+          "I'm here, but things are a bit busy right now. Please try again in a moment.",
+          controller.signal
+        );
 
-          if (!response.ok) {
-            throw new Error(`OpenRouter API error: ${response.status}`);
-          }
-
-          const data = await response.json();
-          return data.choices[0]?.message?.content || "I'm here, but things are a bit busy right now. Please try again in a moment.";
-        } catch (openRouterError) {
-          console.error("OpenRouter API error:", openRouterError);
-          // Fallback to pollinations service
-          const response = await this.runWithTimeoutAndAbort(
-            pollinationsService.queryText(enhancedPrompt),
-            5000, // 5 seconds timeout for more complex queries
-            "I'm here, but things are a bit busy right now. Please try again in a moment.",
-            controller.signal
-          );
-
-          return response;
-        }
+        return response;
       } else {
-        // Try using OpenRouter API directly with the provided key for general queries
-        try {
-          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: 'openchat/openchat-7b',
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are a helpful assistant. Provide clear and accurate responses to user queries.'
-                },
-                {
-                  role: 'user',
-                  content: text
-                }
-              ]
-            })
-          });
+        // Use Pollinations service for general queries
+        const response = await this.runWithTimeoutAndAbort(
+          pollinationsService.queryText(text),
+          3000, // 3 seconds timeout
+          "I'm here, but things are a bit busy right now. Please try again in a moment.",
+          controller.signal
+        );
 
-          if (!response.ok) {
-            throw new Error(`OpenRouter API error: ${response.status}`);
-          }
-
-          const data = await response.json();
-          return data.choices[0]?.message?.content || "I'm here, but things are a bit busy right now. Please try again in a moment.";
-        } catch (openRouterError) {
-          console.error("OpenRouter API error:", openRouterError);
-          // Fallback to pollinations service for general queries
-          const response = await this.runWithTimeoutAndAbort(
-            pollinationsService.queryText(text),
-            3000, // 3 seconds timeout
-            "I'm here, but things are a bit busy right now. Please try again in a moment.",
-            controller.signal
-          );
-
-          return response;
-        }
+        return response;
       }
     } catch (error) {
       console.error("Text chat failed:", error);

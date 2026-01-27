@@ -12,12 +12,11 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.VITE_OPENROUTER_API_KEY': JSON.stringify(env.VITE_OPENROUTER_API_KEY || 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'),
+        'process.env.POLLINATIONS_API_KEY': JSON.stringify(env.POLLINATIONS_API_KEY || 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'),
         'process.env.API_KEY': JSON.stringify(env.API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.OPENROUTER_API_KEY': JSON.stringify(env.OPENROUTER_API_KEY || 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr')
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
       },
-      envPrefix: ['VITE_', 'OPENROUTER_', 'GEMINI_'], // Expose these prefixes to client-side
+      envPrefix: ['VITE_', 'POLLINATIONS_', 'GEMINI_'], // Expose these prefixes to client-side
       resolve: {
         alias: {
           // Fixed: Use path.resolve('.') to resolve the current working directory instead of process.cwd() to avoid typing issues.
