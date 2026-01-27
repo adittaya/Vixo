@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
 import { customerCareAI } from '../services/customerCareAI';
-import { imageAnalysisAI } from '../services/imageAnalysisAI';
 import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
@@ -172,7 +171,7 @@ const Support: React.FC<Props> = ({ user }) => {
 
     try {
       // First, analyze the image with the AI
-      const aiResponse = await imageAnalysisAI.analyzeImage(imageDescription, selectedImage);
+      const aiResponse = await customerCareAI.analyzeImage(imageDescription, selectedImage);
 
       // Create image request message that goes to admin panel (but not to chat history)
       const imageRequestMessage: SupportMessage = {
