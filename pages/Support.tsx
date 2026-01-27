@@ -74,7 +74,12 @@ const Support: React.FC<Props> = ({ user }) => {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        setInputImage(reader.result as string);
+        try {
+          setInputImage(reader.result as string);
+        } catch (error) {
+          console.error("Error setting image data:", error);
+          alert('Error processing image. Please try another image.');
+        }
       };
       reader.onerror = () => {
         console.error("Error reading image file");
@@ -170,7 +175,8 @@ const Support: React.FC<Props> = ({ user }) => {
 
       // Process AI response - await the response to ensure proper flow
       // Important: Always trigger AI response for both text and image messages
-      const aiMessage = userMsgText || (currentImage ? "User sent an image attachment." : "User sent a message.");
+      // For image messages, we send a descriptive text to the AI (not the base64 data)
+      const aiMessage = userMsgText || (currentImage ? "User sent an image attachment for review." : "User sent a message.");
 
       // Await the AI response to ensure proper sequencing
       await triggerAIResponse(aiMessage);
