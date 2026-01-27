@@ -3,12 +3,12 @@ import { imageAnalysisAI } from './imageAnalysisAI';
 import { generateImageDescription, parseImageContent, ImageAnalysisResult } from '../utils/imageParser';
 
 // State management for the router
-let currentAgent: 'chat' | 'image' = 'chat';  // Changed to match the new architecture
-let lastImageContext: any = null;  // Changed name to match the new architecture
+let routerState: 'chat' = 'chat';  // Simplified: Always reset to chat after image processing
+let lastImageContext: any = null;
 
 /**
  * Router / Controller for Customer Care AI
- * Implements the agent switching architecture with state management
+ * Implements the guaranteed fix for text processing after image upload
  */
 export const customerCareRouter = {
   /**
@@ -20,12 +20,9 @@ export const customerCareRouter = {
   async processRequest(message: string, imageData?: string, imageDescription?: string): Promise<string> {
     // If there's an image, process it with the image agent (one-time action)
     if (imageData && imageDescription) {
-      // Switch to image agent temporarily
-      currentAgent = 'image';
-
+      // Image Agent runs ONCE (fire-and-return)
       let imageResult: string;
       try {
-        // Image Agent is TEMPORARY - Runs only when image is uploaded
         imageResult = await imageAnalysisAI.analyzeImage(imageDescription, imageData);
         // Save image result for context
         lastImageContext = imageResult;
@@ -35,10 +32,8 @@ export const customerCareRouter = {
         lastImageContext = imageResult;
       }
 
-      // FORCE switch back to Chat Agent (CRITICAL STEP)
-      currentAgent = 'chat';
-
-      // Combine the user's message with the image analysis
+      // IMMEDIATELY RETURN - DO NOT WAIT
+      // Router resets to CHAT automatically
       const combinedMessage = `${message}\n\nImage Analysis: ${imageResult}`;
 
       // Send to Chat Agent (DEFAULT, ALWAYS ON)
@@ -52,7 +47,7 @@ export const customerCareRouter = {
 
       return response;
     } else {
-      // All text messages ALWAYS go to Chat Agent (DEFAULT)
+      // Go directly to CHAT AGENT (no shared promises, no blocking)
       // Include any previous image context if available
       let fullMessage = message;
       if (lastImageContext) {
@@ -78,9 +73,7 @@ export const customerCareRouter = {
    * @returns The AI response based on image analysis
    */
   async processImageRequest(description: string, imageData: string): Promise<string> {
-    // Image Agent is TEMPORARY - Runs only once per image
-    currentAgent = 'image';
-
+    // Image Agent runs ONCE (fire-and-return)
     let imageResult: string;
     try {
       imageResult = await imageAnalysisAI.analyzeImage(description, imageData);
@@ -92,8 +85,8 @@ export const customerCareRouter = {
       lastImageContext = imageResult;
     }
 
-    // FORCE switch back to Chat Agent (CRITICAL STEP)
-    currentAgent = 'chat';
+    // IMMEDIATELY RETURN - DO NOT WAIT
+    // Router resets to CHAT automatically
 
     // Return the image analysis result
     return imageResult;
@@ -103,16 +96,16 @@ export const customerCareRouter = {
    * Reset the router state to default
    */
   resetState(): void {
-    // Chat Agent is the DEFAULT agent (RULE 1)
-    currentAgent = 'chat';
+    // Always reset to chat
+    routerState = 'chat';
     lastImageContext = null;
   },
 
   /**
-   * Get the current agent state
+   * Get the current state
    */
-  getCurrentAgent(): 'chat' | 'image' {
-    return currentAgent;
+  getState(): 'chat' {
+    return routerState;
   },
 
   /**

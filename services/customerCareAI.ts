@@ -2,7 +2,7 @@ import { customerCareRouter } from './customerCareRouter';
 
 /**
  * Customer Care AI Service
- * Uses the multi-agent router architecture
+ * Uses the guaranteed fix router architecture
  */
 export const customerCareAI = {
   /**
@@ -12,6 +12,7 @@ export const customerCareAI = {
    */
   async getResponse(message: string): Promise<string> {
     // Use the router for text-based interactions
+    // No image data provided, so goes directly to chat agent
     return await customerCareRouter.processRequest(message);
   },
 
@@ -23,6 +24,7 @@ export const customerCareAI = {
    */
   async analyzeImage(description: string, imageUrl: string): Promise<string> {
     // Use the router for image-based interactions
+    // This will run image agent once, then return control
     return await customerCareRouter.processImageRequest(description, imageUrl);
   },
 
