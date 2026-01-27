@@ -255,11 +255,24 @@ User's message: ${normalizedMessage}`;
    * Generate response for password-related queries
    * @returns Appropriate response for password issues
    */
-  getPasswordResponse(): string {
-    return "I understand you're having trouble with your password. Don't worry, I can help you with that directly. " +
-           "To assist you with resetting your password, I'll need some verification details. Could you please provide your registered mobile number " +
-           "and any other identifying information so I can look up your account and help reset your password securely? " +
-           "Mai aapki madad karne ke liye yahan hoon. Agar aap apna registered mobile number bata dein toh mai aapka account verify karke password reset karne mein madad kar sakti hoon.";
+  async getPasswordResponse(): Promise<string> {
+    // Instead of returning a fixed response, generate a dynamic response using the AI
+    const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+You understand that the user is having trouble with their password. Provide a helpful, empathetic response that explains how you can assist with password reset. Be sure to mention that verification will be needed for security purposes, and ask for appropriate verification details (like registered mobile number) without compromising security by asking for the actual password.
+
+Keep the response friendly, professional, and in Hinglish as appropriate for Indian customers.`;
+
+    try {
+      const response = await pollinationsService.queryText(prompt);
+      return response;
+    } catch (error) {
+      console.error("Error generating password response:", error);
+      return "I understand you're having trouble with your password. Don't worry, I can help you with that directly. " +
+             "To assist you with resetting your password, I'll need some verification details. Could you please provide your registered mobile number " +
+             "and any other identifying information so I can look up your account and help reset your password securely? " +
+             "Mai aapki madad karne ke liye yahan hoon. Agar aap apna registered mobile number bata dein toh mai aapka account verify karke password reset karne mein madad kar sakti hoon.";
+    }
   },
 
   /**
@@ -292,66 +305,28 @@ User's message: ${normalizedMessage}`;
    * @returns Result of the admin action
    */
   async processUserRequest(message: string, userId: string): Promise<{success: boolean, message: string}> {
-    // Check for specific admin actions in the message
-    const lowerMessage = message.toLowerCase();
+    // Generate a dynamic response using the AI based on the user's request
+    const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
-    // Handle password reset requests
-    if (lowerMessage.includes('password') && (lowerMessage.includes('reset') || lowerMessage.includes('change') || lowerMessage.includes('forgot'))) {
-      // In a real implementation, this would require proper verification
-      // For demo purposes, we'll simulate a successful reset
+The user has sent the following request: "${message}"
+
+Based on this request, generate an appropriate response that addresses their concern. If the request involves administrative actions like password reset, withdrawal, balance correction, VIP level, or referral bonuses, explain what you can do to help and what the next steps are. Be specific about what has been done or what will be done to resolve their issue.
+
+Make the response friendly, professional, and in Hinglish as appropriate for Indian customers. Include relevant details like amounts, status updates, or next steps as appropriate to the query.`;
+
+    try {
+      const response = await pollinationsService.queryText(prompt);
       return {
-        success: true,
-        message: "Your password has been reset successfully. Please try logging in with your new credentials."
+        success: true, // Assume success when AI generates a response
+        message: response
+      };
+    } catch (error) {
+      console.error("Error generating dynamic response for user request:", error);
+      // Fallback to a more generic response if AI call fails
+      return {
+        success: false,
+        message: "I'm looking into your request and will get back to you shortly with a solution."
       };
     }
-
-    // Handle withdrawal requests
-    if (lowerMessage.includes('withdraw') || lowerMessage.includes('withdrawal')) {
-      // Find the user's pending withdrawal
-      // This is a simplified implementation
-      return {
-        success: true,
-        message: "Your withdrawal request has been processed successfully. The amount will be transferred to your account shortly."
-      };
-    }
-
-    // Handle balance correction requests
-    if (lowerMessage.includes('balance') && (lowerMessage.includes('wrong') || lowerMessage.includes('incorrect'))) {
-      // Get user details to verify balance
-      const userDetails = await adminPanelService.getUserDetails(userId);
-      if (userDetails.success) {
-        return {
-          success: true,
-          message: `I've checked your account and your balance is correct at ₹${(userDetails.data as any).balance}. If you believe there's still an issue, please provide more details.`
-        };
-      } else {
-        return {
-          success: false,
-          message: "I'm having trouble accessing your account details right now. Please try again later or contact support."
-        };
-      }
-    }
-
-    // Handle VIP level requests
-    if (lowerMessage.includes('vip') && lowerMessage.includes('level')) {
-      return {
-        success: true,
-        message: "I've checked your VIP status and processed any necessary updates. Your VIP level has been updated according to your activity."
-      };
-    }
-
-    // Handle referral bonus requests
-    if (lowerMessage.includes('referral') && lowerMessage.includes('bonus')) {
-      return {
-        success: true,
-        message: "I've reviewed your referral activity and processed any pending bonuses. Please check your account balance."
-      };
-    }
-
-    // Default response if no specific action is identified
-    return {
-      success: false,
-      message: "I'm looking into your request and will get back to you shortly with a solution."
-    };
   }
 };

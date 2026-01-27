@@ -78,7 +78,7 @@ const Support: React.FC<Props> = ({ user }) => {
 
     if (isPasswordRelated) {
       // Generate password-specific response
-      const passwordResponse = customerCareAI.getPasswordResponse();
+      const passwordResponse = await customerCareAI.getPasswordResponse();
       aiResponse = { text: passwordResponse };
     } else {
       // Check if verification is required for this request
