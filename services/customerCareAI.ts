@@ -2,7 +2,7 @@ import { customerCareRouter } from './customerCareRouter';
 
 /**
  * Customer Care AI Service
- * Uses the guaranteed fix router architecture
+ * Uses the all-in-one permanent solution router architecture
  */
 export const customerCareAI = {
   /**
@@ -33,5 +33,19 @@ export const customerCareAI = {
    */
   resetState(): void {
     customerCareRouter.resetState();
+  },
+
+  /**
+   * Get the router's busy status
+   */
+  getIsBusy(): boolean {
+    return customerCareRouter.getIsBusy();
+  },
+
+  /**
+   * Get the router's current mode
+   */
+  getCurrentMode(): 'chat' | 'image' {
+    return customerCareRouter.getCurrentMode();
   }
 };
