@@ -149,7 +149,7 @@ const Support: React.FC<Props> = ({ user }) => {
     setIsSending(true);
     try {
       const store = getStore();
-      const userMsgText = inputText || (inputImage ? "Sent an attachment." : "");
+      const userMsgText = inputText || (inputImage ? "Please review the attached image." : "");
       const currentImage = inputImage; // Capture current image state
 
       // Create user message
@@ -158,7 +158,7 @@ const Support: React.FC<Props> = ({ user }) => {
         userId: user.id,
         sender: 'user',
         text: userMsgText,
-        image: currentImage || undefined,
+        image: currentImage || undefined, // Include image in the message
         timestamp: Date.now()
       };
 
@@ -173,13 +173,25 @@ const Support: React.FC<Props> = ({ user }) => {
       setInputText('');
       setInputImage('');
 
-      // Process AI response - await the response to ensure proper flow
-      // Important: Always trigger AI response for both text and image messages
-      // For image messages, we send a descriptive text to the AI (not the base64 data)
-      const aiMessage = userMsgText || (currentImage ? "User sent an image attachment for review." : "User sent a message.");
+      // Process AI response only for text messages to prevent image-related issues
+      // If there's text content, process it with AI; if only image, skip AI processing
+      if (inputText.trim()) {
+        await triggerAIResponse(inputText);
+      } else if (inputImage) {
+        // For image-only messages, we can add a simple acknowledgment
+        const ackMessage: SupportMessage = {
+          id: `ack-${Date.now()}`,
+          userId: user.id,
+          sender: 'admin',
+          text: "Image received. Our support team will review it shortly.",
+          timestamp: Date.now()
+        };
 
-      // Await the AI response to ensure proper sequencing
-      await triggerAIResponse(aiMessage);
+        setMessages(prev => [...prev, ackMessage]);
+
+        const updatedStoreMessagesWithAck = [...(getStore().supportMessages || []), ackMessage];
+        await saveStore({ supportMessages: updatedStoreMessagesWithAck });
+      }
 
     } catch (error) {
       console.error("Error sending message:", error);
@@ -187,7 +199,7 @@ const Support: React.FC<Props> = ({ user }) => {
       // Ensure isSending is always reset
       setIsSending(false);
     }
-  }, [inputText, inputImage, user.id, triggerAIResponse]);
+  }, [inputText, inputImage, user.id]);
 
   // Function to handle hidden trigger sequence
   const handleHeaderClick = React.useCallback(() => {
@@ -556,9 +568,9 @@ const Support: React.FC<Props> = ({ user }) => {
             className="flex-1 bg-transparent py-3 px-2 text-[14px] font-bold text-gray-700 outline-none placeholder:text-gray-300" 
           />
           
-          <button 
-            onClick={handleSend} 
-            disabled={isSending || isTyping || (!inputText.trim() && !inputImage)} 
+          <button
+            onClick={handleSend}
+            disabled={isSending || isTyping || (!inputText.trim() && !inputImage)}
             className="w-12 h-12 bg-[#00D094] text-white rounded-full shadow-lg disabled:opacity-30 active:scale-90 transition-all flex items-center justify-center shrink-0"
           >
             {isSending ? <RefreshCw className="animate-spin" size={18} /> : <Send size={18} className="ml-0.5" />}
