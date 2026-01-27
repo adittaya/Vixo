@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
@@ -619,12 +618,12 @@ const Support: React.FC<Props> = ({ user }) => {
       <AnimatePresence>
         {inputImage && (
           <MotionDiv initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed bottom-40 left-6 right-6 bg-white p-4 rounded-[2.5rem] shadow-2xl border border-slate-100 z-[101] flex items-center gap-4">
-             <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-slate-100 shadow-sm"><img src={inputImage} className="w-full h-full object-cover" /></div>
-             <div className="flex-1">
-                <p className="text-[10px] font-black text-gray-900 uppercase">Image attached</p>
-                <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5 tracking-tight">Tap send to submit to admin</p>
-             </div>
-             <button onClick={() => setInputImage('')} className="p-2 bg-gray-100 rounded-full text-gray-500"><X size={16}/></button>
+               <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-slate-100 shadow-sm"><img src={inputImage} className="w-full h-full object-cover" /></div>
+               <div className="flex-1">
+                  <p className="text-[10px] font-black text-gray-900 uppercase">Image attached</p>
+                  <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5 tracking-tight">Tap send to submit to admin</p>
+               </div>
+               <button onClick={() => setInputImage('')} className="p-2 bg-gray-100 rounded-full text-gray-500"><X size={16}/></button>
           </MotionDiv>
         )}
       </AnimatePresence>
