@@ -15,7 +15,6 @@ interface Props { user: User; }
 const Support: React.FC<Props> = ({ user }) => {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [inputText, setInputText] = useState('');
-  const [inputImage, setInputImage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [usingHiddenAI, setUsingHiddenAI] = useState(false);
@@ -60,76 +59,8 @@ const Support: React.FC<Props> = ({ user }) => {
     }
   }, [messages, isTyping]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file type and size before processing
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-      const maxSize = 5 * 1024 * 1024; // 5MB
-
-      if (!validTypes.includes(file.type)) {
-        alert('Please upload a valid image file (JPEG, PNG, GIF, WEBP)');
-        return;
-      }
-
-      if (file.size > maxSize) {
-        alert('Image size exceeds 5MB limit. Please choose a smaller image.');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        try {
-          // Set the image and immediately create an image request
-          setInputImage(reader.result as string);
-
-          // Show a popup to add description
-          const description = prompt("Please describe the issue with your image (optional):");
-
-          // Create an image request message that goes to admin panel
-          const imageRequestMessage: SupportMessage = {
-            id: `imgreq-${Date.now()}`,
-            userId: user.id,
-            sender: 'user',
-            text: `IMAGE REQUEST: ${description || "User submitted an image for review"}`,
-            image: reader.result as string,
-            timestamp: Date.now()
-          };
-
-          // Save to store
-          const store = getStore();
-          const updatedStoreMessages = [...(store.supportMessages || []), imageRequestMessage];
-          saveStore({ supportMessages: updatedStoreMessages }).then(() => {
-            // Show user feedback
-            const feedbackMessage: SupportMessage = {
-              id: `feedback-${Date.now()}`,
-              userId: user.id,
-              sender: 'admin',
-              text: "Your image request has been submitted to the admin panel. An admin will review it shortly.",
-              timestamp: Date.now()
-            };
-
-            setMessages(prev => [...prev, imageRequestMessage, feedbackMessage]);
-
-            const updatedStoreMessagesWithFeedback = [...(getStore().supportMessages || []), feedbackMessage];
-            saveStore({ supportMessages: updatedStoreMessagesWithFeedback });
-          });
-
-          // Clear the input
-          setInputImage('');
-
-        } catch (error) {
-          console.error("Error setting image data:", error);
-          alert('Error processing image. Please try another image.');
-        }
-      };
-      reader.onerror = () => {
-        console.error("Error reading image file");
-        alert('Error reading image file. Please try another image.');
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  // Remove the direct image upload functionality since we have the dedicated form
+  // The handleImageUpload function is no longer needed as image uploads should only happen through the dedicated form
 
   const triggerAIResponse = React.useCallback(async (lastUserText: string) => {
     // Ensure we have a valid message to process
@@ -252,7 +183,18 @@ const Support: React.FC<Props> = ({ user }) => {
       // Save to global store (for admin panel access) but NOT to user's chat history
       const store = getStore();
       const updatedStoreMessages = [...(store.supportMessages || []), imageRequestMessage];
-      await saveStore({ supportMessages: updatedStoreMessages });
+
+      // Also save a feedback message to the global store
+      const feedbackMessage: SupportMessage = {
+        id: `feedback-${Date.now()}`,
+        userId: user.id,
+        sender: 'admin',
+        text: "Your image request has been submitted to the admin panel. An admin will review it shortly.",
+        timestamp: Date.now()
+      };
+
+      const finalStoreMessages = [...updatedStoreMessages, feedbackMessage];
+      await saveStore({ supportMessages: finalStoreMessages });
 
       // Show success state without adding to chat history
       setImageSubmitted(true);
