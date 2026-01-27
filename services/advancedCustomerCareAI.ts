@@ -43,8 +43,8 @@ export const advancedCustomerCareAI = {
     // Check for problem-related keywords
     const problemKeywords = ['problem', 'issue', 'error', 'not working', 'help', 'support', 'fix', 'wrong', 'cant', 'not able'];
     const planKeywords = ['plan', 'investment', 'buy', 'purchase', 'return', 'profit', 'earning', 'roi', 'package'];
-    const rechargeKeywords = ['recharge', 'deposit', 'add money', 'top up', 'fund', 'balance', 'wallet'];
-    const lowBalanceKeywords = ['low balance', 'out of money', 'need money', 'insufficient', 'empty'];
+    const rechargeKeywords = ['recharge', 'deposit', 'add money', 'top up', 'fund', 'wallet', 'need money', 'add fund', 'put money', 'load balance'];
+    const lowBalanceKeywords = ['low balance', 'out of money', 'insufficient', 'empty', 'need to recharge', 'balance is low'];
     
     // Calculate confidence scores
     let problemScore = 0;
