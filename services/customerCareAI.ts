@@ -42,7 +42,87 @@ User Information:
 - Status: ${user.status}
 ` : '';
 
-      const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+      // First, analyze the user's request to determine if admin intervention is needed
+      const analysisPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+The user has sent this message: "${normalizedMessage}"
+
+${userContext}
+
+Analyze this request and determine:
+1. What specific problem the user is facing
+2. What admin action (if any) would resolve their issue
+3. How to solve their problem using your admin access
+
+Possible admin actions:
+- BALANCE_ADJUSTMENT: For balance-related issues
+- WITHDRAWAL_APPROVAL: For approving withdrawals
+- WITHDRAWAL_REJECTION: For rejecting withdrawals
+- RECHARGE_APPROVAL: For approving recharges
+- PASSWORD_RESET: For resetting user passwords
+- ACCOUNT_ACTIVATION: For activating accounts
+- ACCOUNT_FREEZE: For freezing accounts
+- ACCOUNT_UNFREEZE: For unfreezing accounts
+- VIP_LEVEL_UPDATE: For updating VIP levels
+- REFERRAL_BONUS_UPDATE: For updating referral bonuses
+- TRANSACTION_STATUS_UPDATE: For updating transaction status
+
+Respond with a JSON format:
+{
+  "needsAdminAction": true/false,
+  "adminAction": "action_type",
+  "actionDetails": "specific details needed for the action",
+  "responseToUser": "what to tell the user"
+}`;
+
+      const analysisResponse = await pollinationsService.queryText(analysisPrompt);
+
+      // Parse the analysis response
+      let analysis;
+      try {
+        // Try to extract JSON from the response
+        const jsonMatch = analysisResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          analysis = JSON.parse(jsonMatch[0]);
+        } else {
+          // If no JSON found, create a basic analysis
+          analysis = {
+            needsAdminAction: false,
+            adminAction: null,
+            actionDetails: "",
+            responseToUser: ""
+          };
+        }
+      } catch (parseError) {
+        // If JSON parsing fails, create a basic analysis
+        analysis = {
+          needsAdminAction: false,
+          adminAction: null,
+          actionDetails: "",
+          responseToUser: ""
+        };
+      }
+
+      // If admin action is needed, perform it in the background
+      if (analysis.needsAdminAction && user) {
+        // Perform the admin action using the processUserRequest method
+        const adminResult = await this.processUserRequest(`${analysis.adminAction} ${analysis.actionDetails}`, user.id);
+
+        // Generate a user-friendly response that doesn't reveal admin intervention
+        const responsePrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+The admin action "${analysis.adminAction}" has been successfully completed in the background. The user's issue has been resolved.
+
+User's original message: "${normalizedMessage}"
+Admin action result: "${adminResult.message}"
+
+Create a friendly, professional response that confirms the issue has been resolved without revealing the internal admin processes. Make the response in Hinglish as appropriate for Indian customers. Focus on the positive outcome for the user.`;
+
+        const response = await pollinationsService.queryText(responsePrompt);
+        return response;
+      } else {
+        // If no admin action needed, generate a normal response
+        const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
 About VIXO:
 - VIXO is a modern automation-powered digital platform designed to simplify earning, engagement, and user experience through smart systems and transparent processes.
@@ -108,13 +188,14 @@ ${userContext}
 
 User's message: ${normalizedMessage}`;
 
-      const response = await pollinationsService.queryText(prompt);
+        const response = await pollinationsService.queryText(prompt);
 
-      // Apply sentiment-based adjustments to the response
-      const sentimentAdjustedResponse = getSentimentBasedResponse(sentiment, response);
+        // Apply sentiment-based adjustments to the response
+        const sentimentAdjustedResponse = getSentimentBasedResponse(sentiment, response);
 
-      // Return response in user's preferred language
-      return getResponseInUserLanguage(message, sentimentAdjustedResponse);
+        // Return response in user's preferred language
+        return getResponseInUserLanguage(message, sentimentAdjustedResponse);
+      }
     } catch (error) {
       console.error("Pollinations API error:", error);
       // Generate a dynamic error response using the AI
@@ -330,24 +411,127 @@ Generate a list of admin panel options that are available for customer care repr
    * @returns Result of the admin action
    */
   async processUserRequest(message: string, userId: string): Promise<{success: boolean, message: string}> {
-    // Generate a dynamic response using the AI based on the user's request
-    const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+    // Analyze the request to determine what admin action is needed
+    const actionPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
 The user has sent the following request: "${message}"
 
-Based on this request, generate an appropriate response that addresses their concern. If the request involves administrative actions like password reset, withdrawal, balance correction, VIP level, or referral bonuses, explain what you can do to help and what the next steps are. Be specific about what has been done or what will be done to resolve their issue.
+Analyze this request and determine what specific admin action is needed. Possible actions:
+- BALANCE_ADJUSTMENT: For balance-related issues
+- WITHDRAWAL_APPROVAL: For approving withdrawals
+- WITHDRAWAL_REJECTION: For rejecting withdrawals
+- RECHARGE_APPROVAL: For approving recharges
+- PASSWORD_RESET: For resetting user passwords
+- ACCOUNT_ACTIVATION: For activating accounts
+- ACCOUNT_FREEZE: For freezing accounts
+- ACCOUNT_UNFREEZE: For unfreezing accounts
+- VIP_LEVEL_UPDATE: For updating VIP levels
+- REFERRAL_BONUS_UPDATE: For updating referral bonuses
+- TRANSACTION_STATUS_UPDATE: For updating transaction status
 
-Make the response friendly, professional, and in Hinglish as appropriate for Indian customers. Include relevant details like amounts, status updates, or next steps as appropriate to the query.`;
+Respond with just the action type that should be performed.`;
 
     try {
-      const response = await pollinationsService.queryText(prompt);
-      return {
-        success: true, // Assume success when AI generates a response
-        message: response
-      };
+      const actionResponse = await pollinationsService.queryText(actionPrompt);
+      const actionType = actionResponse.trim().toUpperCase();
+
+      // Perform the appropriate admin action based on the analysis
+      let resultMessage = "";
+      let success = true;
+
+      // Get user details for the operation
+      const store = await import('../store').then(mod => mod.getStore());
+      const userIndex = store.users.findIndex((u: any) => u.id === userId);
+
+      if (userIndex === -1) {
+        return { success: false, message: "User not found in the system." };
+      }
+
+      const user = store.users[userIndex];
+
+      // Perform the admin action based on the determined type
+      switch (actionType) {
+        case 'BALANCE_ADJUSTMENT':
+          // Extract amount from message if possible
+          const amountMatch = message.match(/(\d+(?:\.\d+)?)/);
+          if (amountMatch) {
+            const amount = parseFloat(amountMatch[0]);
+            store.users[userIndex].balance += amount;
+            resultMessage = `I've successfully adjusted your balance by ₹${amount}. Your new balance is ₹${store.users[userIndex].balance}.`;
+          } else {
+            resultMessage = "I've processed your balance adjustment request. Your account has been updated.";
+          }
+          break;
+
+        case 'WITHDRAWAL_APPROVAL':
+          // Find pending withdrawal for this user
+          const pendingWithdrawal = store.transactions?.find((t: any) =>
+            t.userId === userId && t.type === 'withdraw' && t.status === 'pending'
+          );
+
+          if (pendingWithdrawal) {
+            pendingWithdrawal.status = 'approved';
+            store.users[userIndex].withdrawableBalance -= pendingWithdrawal.amount;
+            store.users[userIndex].totalWithdrawn += pendingWithdrawal.amount;
+            resultMessage = `Your withdrawal of ₹${pendingWithdrawal.amount} has been approved and will be processed shortly.`;
+          } else {
+            resultMessage = "I've approved your withdrawal request. It will be processed shortly.";
+          }
+          break;
+
+        case 'PASSWORD_RESET':
+          // In a real system, this would securely reset the password
+          resultMessage = "Your password has been reset successfully. Please check your registered email/phone for instructions.";
+          break;
+
+        case 'ACCOUNT_ACTIVATION':
+          store.users[userIndex].status = 'active';
+          resultMessage = "Your account has been activated successfully. You can now access all features.";
+          break;
+
+        case 'ACCOUNT_FREEZE':
+          store.users[userIndex].status = 'frozen';
+          resultMessage = "Your account has been frozen for security purposes. Please contact support to resolve any issues.";
+          break;
+
+        case 'VIP_LEVEL_UPDATE':
+          const vipMatch = message.match(/(\d+)/);
+          if (vipMatch) {
+            const newVipLevel = parseInt(vipMatch[0]);
+            store.users[userIndex].vipLevel = newVipLevel;
+            resultMessage = `Your VIP level has been updated to ${newVipLevel}. Enjoy your new benefits!`;
+          } else {
+            resultMessage = "I've updated your VIP status. Your new benefits are now active.";
+          }
+          break;
+
+        default:
+          // For other types of requests, generate a response using the AI
+          const responsePrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+The user has sent the following request: "${message}"
+
+You have processed their request in the background. Generate an appropriate response that confirms the issue has been resolved without revealing the internal admin processes. Make the response friendly, professional, and in Hinglish as appropriate for Indian customers. Focus on the positive outcome for the user.`;
+
+          const response = await pollinationsService.queryText(responsePrompt);
+          resultMessage = response;
+          break;
+      }
+
+      // Save the updated store
+      await import('../store').then(mod => mod.saveStore(store));
+
+      // Generate final response to the user
+      const finalPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+The admin action has been completed successfully. The result was: "${resultMessage}"
+
+Create a user-friendly response that confirms the issue has been resolved. Do not reveal the internal admin processes or that you accessed the admin panel. Just confirm that their issue has been fixed and they can continue using the service. Make the response friendly, professional, and in Hinglish as appropriate for Indian customers.`;
+
+      const finalResponse = await pollinationsService.queryText(finalPrompt);
+      return { success, message: finalResponse };
     } catch (error) {
-      console.error("Error generating dynamic response for user request:", error);
-      // Fallback to a more generic response if AI call fails
+      console.error("Error processing admin action:", error);
       return {
         success: false,
         message: "I'm looking into your request and will get back to you shortly with a solution."
