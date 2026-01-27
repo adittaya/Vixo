@@ -1,14 +1,14 @@
 import { chatAI } from './chatAI';
+import { imageAnalysisAI } from './imageAnalysisAI';
 import { generateImageDescription, parseImageContent, ImageAnalysisResult } from '../utils/imageParser';
 
 // State management for the router
-let currentState: 'chat' | 'image_analysis' = 'chat';
-let lastImageResult: string | null = null;
-let imageResultTimestamp: number | null = null; // Track when image result was created
+let currentAgent: 'chat' | 'image' = 'chat';  // Changed to match the new architecture
+let lastImageContext: any = null;  // Changed name to match the new architecture
 
 /**
- * Router / Orchestrator for Customer Care AI
- * Implements the multi-agent architecture with decision logic
+ * Router / Controller for Customer Care AI
+ * Implements the agent switching architecture with state management
  */
 export const customerCareRouter = {
   /**
@@ -18,54 +18,53 @@ export const customerCareRouter = {
    * @returns The complete AI response
    */
   async processRequest(message: string, imageData?: string, imageDescription?: string): Promise<string> {
-    // If there's an image, process it first (one-time action)
+    // If there's an image, process it with the image agent (one-time action)
     if (imageData && imageDescription) {
-      // Parse the image content
-      const imageAnalysis: ImageAnalysisResult = parseImageContent(imageData, imageDescription);
-      const structuredImageInfo = generateImageDescription(imageAnalysis);
+      // Switch to image agent temporarily
+      currentAgent = 'image';
 
-      // Store the image result for context
-      lastImageResult = structuredImageInfo;
-      imageResultTimestamp = Date.now();
+      let imageResult: string;
+      try {
+        // Image Agent is TEMPORARY - Runs only when image is uploaded
+        imageResult = await imageAnalysisAI.analyzeImage(imageDescription, imageData);
+        // Save image result for context
+        lastImageContext = imageResult;
+      } catch (error) {
+        console.error("Error in image analysis agent:", error);
+        imageResult = "Support is busy right now. Please try again.";
+        lastImageContext = imageResult;
+      }
 
-      // Combine the user's message with the structured image info
-      const combinedMessage = `${message}\n\nImage Analysis: ${structuredImageInfo}`;
+      // FORCE switch back to Chat Agent (CRITICAL STEP)
+      currentAgent = 'chat';
 
-      // Send to chat agent with image context
+      // Combine the user's message with the image analysis
+      const combinedMessage = `${message}\n\nImage Analysis: ${imageResult}`;
+
+      // Send to Chat Agent (DEFAULT, ALWAYS ON)
       let response: string;
       try {
         response = await chatAI.getResponse(combinedMessage);
       } catch (error) {
-        console.error("Error in chat AI during image processing:", error);
-        response = "Support is busy right now. Please wait a moment and try again. I'm here to help.";
+        console.error("Error in chat agent after image processing:", error);
+        response = "Support is busy right now. Please try again.";
       }
-
-      // CRITICAL: Reset to chat mode after processing image
-      currentState = 'chat';
 
       return response;
     } else {
-      // Just send the text message to the chat agent
-      // Include any previous image context if available and not expired
+      // All text messages ALWAYS go to Chat Agent (DEFAULT)
+      // Include any previous image context if available
       let fullMessage = message;
-      if (lastImageResult && imageResultTimestamp) {
-        // Expire image context after 5 minutes (300,000 ms)
-        const fiveMinutes = 5 * 60 * 1000;
-        if (Date.now() - imageResultTimestamp < fiveMinutes) {
-          fullMessage = `${message}\n\nPrevious Image Context: ${lastImageResult}`;
-        } else {
-          // Clear expired image context
-          lastImageResult = null;
-          imageResultTimestamp = null;
-        }
+      if (lastImageContext) {
+        fullMessage = `${message}\n\nPrevious Image Context: ${lastImageContext}`;
       }
 
       let response: string;
       try {
         response = await chatAI.getResponse(fullMessage);
       } catch (error) {
-        console.error("Error in chat AI during text processing:", error);
-        response = "Support is busy right now. Please wait a moment and try again. I'm here to help.";
+        console.error("Error in chat agent during text processing:", error);
+        response = "Support is busy right now. Please try again.";
       }
 
       return response;
@@ -79,45 +78,47 @@ export const customerCareRouter = {
    * @returns The AI response based on image analysis
    */
   async processImageRequest(description: string, imageData: string): Promise<string> {
-    // Parse the image content
-    const imageAnalysis: ImageAnalysisResult = parseImageContent(imageData, description);
-    const structuredImageInfo = generateImageDescription(imageAnalysis);
+    // Image Agent is TEMPORARY - Runs only once per image
+    currentAgent = 'image';
 
-    // Store the image result for context
-    lastImageResult = structuredImageInfo;
-    imageResultTimestamp = Date.now();
-
-    // Create a message for the chat agent with image context
-    const message = `User has submitted an image with the following description: "${description}".\n\n${structuredImageInfo}`;
-
-    // Send to chat agent
-    let response: string;
+    let imageResult: string;
     try {
-      response = await chatAI.getResponse(message);
+      imageResult = await imageAnalysisAI.analyzeImage(description, imageData);
+      // Save image result for context
+      lastImageContext = imageResult;
     } catch (error) {
-      console.error("Error in chat AI during image request processing:", error);
-      response = "Support is busy right now. Please wait a moment and try again. I'm here to help.";
+      console.error("Error in image analysis agent:", error);
+      imageResult = "Support is busy right now. Please try again.";
+      lastImageContext = imageResult;
     }
 
-    // CRITICAL: Reset to chat mode after processing image
-    currentState = 'chat';
+    // FORCE switch back to Chat Agent (CRITICAL STEP)
+    currentAgent = 'chat';
 
-    return response;
+    // Return the image analysis result
+    return imageResult;
   },
 
   /**
    * Reset the router state to default
    */
   resetState(): void {
-    currentState = 'chat';
-    lastImageResult = null;
-    imageResultTimestamp = null;
+    // Chat Agent is the DEFAULT agent (RULE 1)
+    currentAgent = 'chat';
+    lastImageContext = null;
   },
 
   /**
-   * Get the current state
+   * Get the current agent state
    */
-  getState(): 'chat' | 'image_analysis' {
-    return currentState;
+  getCurrentAgent(): 'chat' | 'image' {
+    return currentAgent;
+  },
+
+  /**
+   * Get the last image context
+   */
+  getLastImageContext(): any {
+    return lastImageContext;
   }
 };
