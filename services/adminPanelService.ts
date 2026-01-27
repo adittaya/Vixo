@@ -274,15 +274,49 @@ export const adminPanelService = {
     try {
       const store = getStore();
       const transactions = store.transactions.filter(t => t.userId === userId);
-      
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         message: 'Transaction history retrieved successfully',
         data: transactions
       };
     } catch (error) {
       console.error('Error getting user transactions:', error);
       return { success: false, message: 'Failed to retrieve transaction history' };
+    }
+  },
+
+  /**
+   * Change user password
+   */
+  async changeUserPassword(userId: string, newPassword: string): Promise<AdminActionResponse> {
+    try {
+      const store = getStore();
+      const userIndex = store.users.findIndex(u => u.id === userId);
+
+      if (userIndex === -1) {
+        return { success: false, message: 'User not found' };
+      }
+
+      // In a real implementation, you would hash the password
+      // For now, we'll just update it directly
+      store.users[userIndex].password = newPassword;
+
+      // If the user is the current user, update the session
+      if (store.currentUser && store.currentUser.id === userId) {
+        store.currentUser.password = newPassword;
+        await saveStore({ currentUser: store.currentUser });
+      }
+
+      await saveStore(store);
+
+      return {
+        success: true,
+        message: 'Password changed successfully'
+      };
+    } catch (error) {
+      console.error('Error changing user password:', error);
+      return { success: false, message: 'Failed to change password' };
     }
   }
 };

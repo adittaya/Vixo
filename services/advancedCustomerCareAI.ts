@@ -99,7 +99,13 @@ export const advancedCustomerCareAI = {
     if (adminResult.success) {
       // Check for specific problem types
       if (message.toLowerCase().includes('password')) {
-        return "I've checked your account and reset your password access. Your password has been reset successfully. Please try logging in again.";
+        // Process password change request
+        const result = await adminPanelService.changeUserPassword(user.id, "new_default_password"); // In practice, you'd generate a secure temporary password
+        if (result.success) {
+          return "I've successfully reset your password access. Your password has been reset successfully. Please try logging in again with your new credentials.";
+        } else {
+          return "I tried to reset your password but encountered an issue. Let me know if you'd like me to try again or if there's anything else I can help with.";
+        }
       } else if (message.toLowerCase().includes('balance') || message.toLowerCase().includes('wrong')) {
         return `I've verified your account and your current balance is ₹${user.balance}. If you believe there's an issue, please let me know the specific concern.`;
       } else if (message.toLowerCase().includes('withdraw')) {
