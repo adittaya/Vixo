@@ -70,12 +70,6 @@ const Support: React.FC<Props> = ({ user }) => {
   };
 
   const triggerAIResponse = React.useCallback(async (lastUserText: string) => {
-    // Only proceed if there's actual text to process
-    if (!lastUserText || lastUserText.trim() === '') {
-      setIsTyping(false);
-      return;
-    }
-
     setIsTyping(true);
 
     let aiResponse;
@@ -94,7 +88,7 @@ const Support: React.FC<Props> = ({ user }) => {
       }
     } catch (error) {
       console.error("Error with customer care AI:", error);
-      aiResponse = { text: "Customer care AI is temporarily unavailable. Please try again later." };
+      aiResponse = { text: "I'm having trouble connecting right now. Please try again in a moment." };
       if (usingHiddenAI) setUsingHiddenAI(false);
     } finally {
       // Ensure typing indicator is always cleared
@@ -152,8 +146,7 @@ const Support: React.FC<Props> = ({ user }) => {
       setInputImage('');
 
       // Process AI response separately
-      // Important: Trigger AI response for both text and image messages
-      // If there's no text but there's an image, send a default message indicating an image was sent
+      // Important: Always trigger AI response for both text and image messages
       const aiMessage = userMsgText || (currentImage ? "User sent an image attachment." : "User sent a message.");
       await triggerAIResponse(aiMessage);
     } catch (error) {
