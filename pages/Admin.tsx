@@ -565,27 +565,68 @@ const Admin: React.FC = () => {
         {/* Support Tab */}
         {activeTab === 'support' && (
           <div className="space-y-6">
-            {!activeSupportUserId ? (
-              <div className="space-y-4">
-                <h2 className="text-xl font-black uppercase italic px-2">Support Center</h2>
-                {supportUsers.length > 0 ? supportUsers.map(({ user, lastMsg }) => (
-                  <button key={user.id} onClick={() => setActiveSupportUserId(user.id)} className="w-full bg-[#111] p-6 rounded-[32px] border border-white/5 flex items-center justify-between hover:border-[#E31837] transition-all group">
-                    <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-[#E31837]/10 group-hover:text-[#E31837]">{lastMsg.sender === 'user' ? <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div> : <UserIcon size={24}/>}</div>
-                       <div className="text-left">
-                          <p className="text-sm font-black text-white">{user.mobile}</p>
-                          <p className="text-[10px] text-gray-500 font-bold truncate max-w-[150px]">{lastMsg.image ? '📷 Sent an image' : lastMsg.text}</p>
-                       </div>
-                    </div>
-                    <ChevronRight size={20} className="text-gray-600" />
-                  </button>
-                )) : <div className="py-20 text-center opacity-20 flex flex-col items-center"><Headphones size={48} className="mb-4"/><p>No active support tickets.</p></div>}
-              </div>
-            ) : (
-              <div className="bg-[#111] rounded-[48px] border border-white/5 flex flex-col h-[70vh] shadow-2xl overflow-hidden">
-                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
-                   <div className="flex items-center gap-3">
-                      <button onClick={() => setActiveSupportUserId(null)} className="p-2 bg-white/5 rounded-xl text-gray-400 hover:text-white transition-colors"><ArrowLeft size={18}/></button>
+            {/* Image Requests Section */}
+            <div className="bg-[#111] p-6 rounded-[32px] border border-white/5">
+              <h3 className="text-lg font-black uppercase italic mb-4">Image Requests</h3>
+              {data.supportMessages.filter(m => m.text.includes('IMAGE REQUEST')).length > 0 ? (
+                <div className="space-y-4 max-h-60 overflow-y-auto">
+                  {data.supportMessages
+                    .filter(m => m.text.includes('IMAGE REQUEST'))
+                    .map(msg => {
+                      const user = data.users.find(u => u.id === msg.userId);
+                      return (
+                        <div key={msg.id} className="bg-black/20 p-4 rounded-xl border border-white/5">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-sm font-black text-white">{user?.mobile || 'Unknown User'}</p>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">IMAGE REQUEST</p>
+                              <p className="text-sm text-gray-300 mt-2">{msg.text.replace('IMAGE REQUEST: ', '')}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[8px] text-gray-500">{new Date(msg.timestamp).toLocaleDateString()}</p>
+                              <p className="text-[8px] text-gray-500">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            </div>
+                          </div>
+                          {msg.image && (
+                            <div className="mt-3">
+                              <a href={msg.image} target="_blank" rel="noreferrer">
+                                <img src={msg.image} className="w-full rounded-lg border border-white/10 max-h-40 object-contain cursor-pointer" alt="User attachment" />
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-4">No image requests pending</p>
+              )}
+            </div>
+
+            {/* Regular Support Tickets */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-black uppercase italic px-2">Support Tickets</h2>
+              {supportUsers.length > 0 ? supportUsers.map(({ user, lastMsg }) => (
+                <button key={user.id} onClick={() => setActiveSupportUserId(user.id)} className="w-full bg-[#111] p-6 rounded-[32px] border border-white/5 flex items-center justify-between hover:border-[#E31837] transition-all group">
+                  <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-[#E31837]/10 group-hover:text-[#E31837]">{lastMsg.sender === 'user' ? <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div> : <UserIcon size={24}/>}</div>
+                     <div className="text-left">
+                        <p className="text-sm font-black text-white">{user.mobile}</p>
+                        <p className="text-[10px] text-gray-500 font-bold truncate max-w-[150px]">{lastMsg.image ? '📷 Sent an image' : lastMsg.text}</p>
+                     </div>
+                  </div>
+                  <ChevronRight size={20} className="text-gray-600" />
+                </button>
+              )) : <div className="py-20 text-center opacity-20 flex flex-col items-center"><Headphones size={48} className="mb-4"/><p>No active support tickets.</p></div>}
+            </div>
+          </div>
+        )}
+        {!activeSupportUserId ? null : (
+          <div className="bg-[#111] rounded-[48px] border border-white/5 flex flex-col h-[70vh] shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
+               <div className="flex items-center gap-3">
+                  <button onClick={() => setActiveSupportUserId(null)} className="p-2 bg-white/5 rounded-xl text-gray-400 hover:text-white transition-colors"><ArrowLeft size={18}/></button>
                       <div>
                         <p className="text-sm font-black text-white italic leading-none">{data.users.find(u => u.id === activeSupportUserId)?.mobile}</p>
                         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Direct Console</p>
