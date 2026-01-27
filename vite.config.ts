@@ -12,10 +12,10 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.VITE_OPENROUTER_API_KEY': JSON.stringify(env.VITE_OPENROUTER_API_KEY),
+        'process.env.VITE_OPENROUTER_API_KEY': JSON.stringify(env.VITE_OPENROUTER_API_KEY || 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'),
         'process.env.API_KEY': JSON.stringify(env.API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.OPENROUTER_API_KEY': JSON.stringify(env.OPENROUTER_API_KEY)
+        'process.env.OPENROUTER_API_KEY': JSON.stringify(env.OPENROUTER_API_KEY || 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr')
       },
       envPrefix: ['VITE_', 'OPENROUTER_', 'GEMINI_'], // Expose these prefixes to client-side
       resolve: {

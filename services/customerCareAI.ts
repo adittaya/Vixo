@@ -2,7 +2,7 @@ import { customAIAgent } from './customAIAgent';
 
 /**
  * Customer Care AI Service
- * Uses custom AI agent backbone with Pollinations-only processing
+ * Uses custom AI agent backbone with OpenRouter API
  */
 export const customerCareAI = {
   /**
@@ -11,19 +11,53 @@ export const customerCareAI = {
    * @returns The complete AI response
    */
   async getResponse(message: string): Promise<string> {
-    // Use custom AI agent with Pollinations-only processing
-    // Each message is processed independently with no memory
+    // Try using OpenRouter API directly with the provided key
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'openchat/openchat-7b',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a helpful customer care assistant for VIXO investment platform.
+              Provide personalized support based on the user's information and needs.
+              Be professional, empathetic, and solution-oriented.
+              If the user has a problem, try to understand it and suggest appropriate solutions.
+              If the user needs help with their account, investments, withdrawals, or anything else, provide clear guidance.`
+            },
+            {
+              role: 'user',
+              content: message
+            }
+          ]
+        })
+      });
 
-    // Enhance the message with customer care context
-    const enhancedMessage = `You are a helpful customer care assistant for VIXO investment platform.
-    Provide personalized support based on the user's information and needs.
-    Be professional, empathetic, and solution-oriented.
-    If the user has a problem, try to understand it and suggest appropriate solutions.
-    If the user needs help with their account, investments, withdrawals, or anything else, provide clear guidance.
+      if (!response.ok) {
+        throw new Error(`OpenRouter API error: ${response.status}`);
+      }
 
-    Context: ${message}`;
+      const data = await response.json();
+      return data.choices[0]?.message?.content || "I'm here, but things are a bit busy right now. Please try again in a moment.";
+    } catch (error) {
+      console.error("OpenRouter API error:", error);
+      // Fallback to custom agent if OpenRouter fails
+      // Enhance the message with customer care context
+      const enhancedMessage = `You are a helpful customer care assistant for VIXO investment platform.
+      Provide personalized support based on the user's information and needs.
+      Be professional, empathetic, and solution-oriented.
+      If the user has a problem, try to understand it and suggest appropriate solutions.
+      If the user needs help with their account, investments, withdrawals, or anything else, provide clear guidance.
 
-    return await customAIAgent.processUserInput({ text: enhancedMessage });
+      Context: ${message}`;
+
+      return await customAIAgent.processUserInput({ text: enhancedMessage });
+    }
   },
 
   /**
