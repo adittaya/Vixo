@@ -1,27 +1,37 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
 import { customerCareAI } from '../services/customerCareAI';
-import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield, Settings, Eye, EyeOff, MessageCircle } from 'lucide-react';
+import { Send, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield, Settings, Eye, EyeOff, MessageCircle, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
 import * as ReactRouterDOM from 'react-router-dom';
-import EnhancedCustomerCare from '../components/EnhancedCustomerCare';
 
 const { useNavigate } = ReactRouterDOM as any;
 const MotionDiv = motion.div as any;
 
-interface Props { user: User; }
+interface EnhancedCustomerCareProps {
+  user: User;
+  isOpen: boolean;
+  onClose: () => void;
+  isAdmin?: boolean;
+}
 
-const Support: React.FC<Props> = ({ user }) => {
-  const [messages, setMessages] = useState<SupportMessage[]>([]);
+const EnhancedCustomerCare: React.FC<EnhancedCustomerCareProps> = ({ user, isOpen, onClose, isAdmin = false }) => {
+  const [messages, setMessages] = useState<SupportMessage[]>([
+    {
+      id: `welcome-${Date.now()}`,
+      userId: user.id,
+      sender: 'admin',
+      text: `Hello ${user.name}! I'm your personalized AI assistant. How can I help you today?`,
+      timestamp: Date.now(),
+    }
+  ]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [usingHiddenAI, setUsingHiddenAI] = useState(false);
-  const [adminMode, setAdminMode] = useState(false);
   const [showAdminControls, setShowAdminControls] = useState(false);
-  const [isEnhancedCustomerCareOpen, setIsEnhancedCustomerCareOpen] = useState(false);
+  const [usingHiddenAI, setUsingHiddenAI] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -30,29 +40,8 @@ const Support: React.FC<Props> = ({ user }) => {
   let clickSequence: string[] = [];
   let sequenceTimeout: NodeJS.Timeout | null = null;
 
-  const refreshMessages = React.useCallback(() => {
-    const store = getStore();
-    const userMessages = (store.supportMessages || []).filter(m => m.userId === user.id);
-    // Only update if there are new messages from other sources
-    setMessages(prev => {
-      const prevIds = new Set(prev.map(m => m.id));
-      const newMessages = userMessages.filter(m => !prevIds.has(m.id));
-      if (newMessages.length > 0) {
-        return [...prev, ...newMessages].sort((a, b) => a.timestamp - b.timestamp);
-      }
-      return prev;
-    });
-  }, [user.id]);
-
-  useEffect(() => {
-    refreshMessages();
-    const interval = setInterval(refreshMessages, 10000); // Increased interval to reduce frequency
-    return () => clearInterval(interval);
-  }, [refreshMessages]);
-
   useEffect(() => {
     if (scrollRef.current) {
-      // Use instant scrolling instead of smooth for better performance
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
@@ -138,8 +127,6 @@ const Support: React.FC<Props> = ({ user }) => {
     } finally {
       // Ensure typing indicator is always cleared in the end
       setIsTyping(false);
-      // Refresh messages to ensure UI is up to date
-      refreshMessages();
     }
   }, [user, usingHiddenAI]);
 
@@ -214,9 +201,6 @@ const Support: React.FC<Props> = ({ user }) => {
             timestamp: Date.now()
           };
 
-          const store = getStore();
-          const updatedStoreMessages = [...(store.supportMessages || []), modeToggleMessage];
-          saveStore({ supportMessages: updatedStoreMessages });
           setMessages(prevMessages => [...prevMessages, modeToggleMessage].sort((a, b) => a.timestamp - b.timestamp));
 
           return newValue;
@@ -431,201 +415,190 @@ const Support: React.FC<Props> = ({ user }) => {
     );
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="bg-[#f8faf9] flex flex-col h-screen max-h-screen overflow-hidden">
-      {/* HEADER WITH ADMIN CONTROLS */}
-      <header
-        className={`bg-white px-6 pt-12 pb-6 flex items-center gap-4 shrink-0 shadow-sm border-b border-slate-50 z-[100] ${
-          usingHiddenAI ? 'bg-yellow-50 border-yellow-200' : ''
-        }`}
-        onClick={handleHeaderClick}
-      >
-        <button onClick={(e) => { e.stopPropagation(); navigate(-1); }} className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all shrink-0">
-          <ChevronLeft size={20} />
-        </button>
-        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#00D094]/10 shrink-0 relative">
-           <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover" alt="Simran" />
-           <div className="absolute bottom-0 right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>
-        </div>
-        <div className="overflow-hidden flex-1">
-          <div className="flex items-center gap-1.5">
-            <h2 className="text-[15px] font-black text-gray-900 tracking-tight truncate">
-              {usingHiddenAI ? (
-                <span className="flex items-center gap-1">
-                  <Shield className="text-red-500" size={14} /> Admin AI
-                </span>
-              ) : (
-                <>
-                  <Bot size={14} className="text-blue-400" /> Simran
-                </>
-              )}
-            </h2>
-            <CheckCircle2 size={12} className={`shrink-0 ${usingHiddenAI ? 'text-yellow-500' : 'text-blue-500'}`} />
-          </div>
-          <p className="text-[9px] font-black text-[#00D094] uppercase tracking-widest mt-0.5 whitespace-nowrap">
-            {usingHiddenAI
-              ? 'ADMIN MODE • Full Access Enabled'
-              : 'Online • VIXO Support Desk'}
-          </p>
-        </div>
-        {usingHiddenAI && (
-          <div className="bg-red-100 text-red-800 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-wider">
-            ADMIN
-          </div>
-        )}
-        
-        {/* Admin Controls Button */}
-        <button
-          onClick={() => setShowAdminControls(!showAdminControls)}
-          className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all"
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-[9998] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md h-[70vh] flex flex-col shadow-2xl">
+        {/* Header */}
+        <div 
+          className={`bg-[#00D094] text-white p-4 rounded-t-2xl flex justify-between items-center ${
+            usingHiddenAI ? 'bg-yellow-500' : 'bg-[#00D094]'
+          }`}
+          onClick={handleHeaderClick}
         >
-          {showAdminControls ? <EyeOff size={16} /> : <Eye size={16} />}
-        </button>
-
-        {/* Enhanced Customer Care Button */}
-        <button
-          onClick={() => setIsEnhancedCustomerCareOpen(true)}
-          className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all"
-        >
-          <Settings size={16} />
-        </button>
-      </header>
-
-      {/* ADMIN CONTROLS PANEL */}
-      <AnimatePresence>
-        {showAdminControls && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="bg-white border-b border-gray-100 px-6 py-4"
-          >
-            <div className="flex flex-wrap gap-2">
-              <button 
-                onClick={() => {
-                  const cmd = "admin: adjust balance 100";
-                  setInputText(cmd);
-                }}
-                className="px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-bold rounded-lg hover:bg-blue-200 transition-colors"
-              >
-                Add ₹100
-              </button>
-              <button 
-                onClick={() => {
-                  const cmd = "admin: freeze account";
-                  setInputText(cmd);
-                }}
-                className="px-3 py-1.5 bg-amber-100 text-amber-800 text-xs font-bold rounded-lg hover:bg-amber-200 transition-colors"
-              >
-                Freeze Account
-              </button>
-              <button 
-                onClick={() => {
-                  const cmd = "admin: activate account";
-                  setInputText(cmd);
-                }}
-                className="px-3 py-1.5 bg-green-100 text-green-800 text-xs font-bold rounded-lg hover:bg-green-200 transition-colors"
-              >
-                Activate Account
-              </button>
-              <button 
-                onClick={() => {
-                  const cmd = "admin: approve withdrawal";
-                  setInputText(cmd);
-                }}
-                className="px-3 py-1.5 bg-purple-100 text-purple-800 text-xs font-bold rounded-lg hover:bg-purple-200 transition-colors"
-              >
-                Approve Withdrawal
-              </button>
-              <button 
-                onClick={() => {
-                  const cmd = "admin: enable maintenance";
-                  setInputText(cmd);
-                }}
-                className="px-3 py-1.5 bg-red-100 text-red-800 text-xs font-bold rounded-lg hover:bg-red-200 transition-colors"
-              >
-                Enable Maintenance
-              </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/30">
+              <img 
+                src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop" 
+                className="w-full h-full object-cover" 
+                alt="Simran" 
+              />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* CHAT AREA */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 space-y-8 pt-8 no-scrollbar bg-[#f8faf9] pb-32">
-        {messages.map((msg) => {
-          const isUser = msg.sender === 'user';
-          return (
-            <div
-              key={msg.id}
-              className={`flex ${isUser ? 'justify-end' : 'justify-start'} w-full`}
+            <div>
+              <h3 className="font-bold text-sm">
+                {usingHiddenAI ? (
+                  <span className="flex items-center gap-1">
+                    <Shield size={14} className="text-white" /> Admin AI
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <Bot size={14} className="text-white" /> Simran
+                  </span>
+                )}
+              </h3>
+              <p className="text-[8px] font-bold uppercase tracking-wider">
+                {usingHiddenAI ? 'ADMIN MODE' : 'ONLINE'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAdminControls(!showAdminControls)}
+              className="text-white/80 hover:text-white"
             >
-              <div className="max-w-[85%] space-y-1">
-                 {isUser ? (
-                   /* USER BUBBLE: GREEN AS PER SCREENSHOT */
-                   <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#00D094] text-white px-6 py-4 rounded-[2rem] rounded-tr-none shadow-lg relative">
-                        {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-2 border border-white/20 max-h-60 object-cover" alt="Attachment" />}
-                        <p className="text-[14px] font-bold leading-relaxed">{msg.text}</p>
-                     </MotionDiv>
-                   ) : (
-                     /* ADMIN BUBBLE: LIGHT GRAY AS PER SCREENSHOT */
-                     <MotionDiv initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#f1f5f9] text-[#2c3e50] px-6 py-6 rounded-[2.5rem] rounded-tl-none shadow-sm border border-slate-100 relative">
-                        {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-4 border border-slate-200 max-h-60 object-cover" alt="Attachment" />}
-                        {renderMessageText(msg.text)}
-                     </MotionDiv>
-                   )}
-                 <p className={`text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1.5 ${isUser ? 'text-right mr-2' : 'text-left ml-2'}`}>
-                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                 </p>
+              {showAdminControls ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+            <button
+              onClick={onClose}
+              className="text-white/80 hover:text-white"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Admin Controls Panel */}
+        <AnimatePresence>
+          {showAdminControls && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="bg-gray-50 border-b border-gray-200 p-3"
+            >
+              <div className="flex flex-wrap gap-1">
+                <button 
+                  onClick={() => {
+                    const cmd = "admin: adjust balance 100";
+                    setInputText(cmd);
+                  }}
+                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded hover:bg-blue-200 transition-colors"
+                >
+                  Add ₹100
+                </button>
+                <button 
+                  onClick={() => {
+                    const cmd = "admin: freeze account";
+                    setInputText(cmd);
+                  }}
+                  className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded hover:bg-amber-200 transition-colors"
+                >
+                  Freeze
+                </button>
+                <button 
+                  onClick={() => {
+                    const cmd = "admin: activate account";
+                    setInputText(cmd);
+                  }}
+                  className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded hover:bg-green-200 transition-colors"
+                >
+                  Activate
+                </button>
+                <button 
+                  onClick={() => {
+                    const cmd = "admin: approve withdrawal";
+                    setInputText(cmd);
+                  }}
+                  className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-bold rounded hover:bg-purple-200 transition-colors"
+                >
+                  Approve WD
+                </button>
+                <button 
+                  onClick={() => {
+                    const cmd = "admin: enable maintenance";
+                    setInputText(cmd);
+                  }}
+                  className="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded hover:bg-red-200 transition-colors"
+                >
+                  Maintenance
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Messages */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4"
+        >
+          {messages.map((msg) => {
+            const isUser = msg.sender === 'user';
+            return (
+              <div
+                key={msg.id}
+                className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`
+                  max-w-[85%] rounded-2xl p-3
+                  ${isUser
+                    ? 'bg-blue-600 text-white rounded-tr-none'
+                    : 'bg-gray-200 text-gray-800 rounded-tl-none'
+                  }
+                `}>
+                  <div className="text-[8px] font-bold opacity-70 mb-1 uppercase tracking-wider">
+                    {isUser ? 'You' : 'Customer Care'}
+                  </div>
+                  <div className="whitespace-pre-wrap leading-relaxed text-sm">
+                    {msg.sender === 'admin' ? renderMessageText(msg.text) : msg.text}
+                  </div>
+                  <div className="text-[7px] opacity-50 mt-1 text-right">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="bg-gray-200 rounded-2xl p-3 flex gap-1 items-center">
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
               </div>
             </div>
-          );
-        })}
-
-        {isTyping && (
-          <div className="flex justify-start">
-            <div className="bg-[#f1f5f9] p-4 rounded-[2rem] rounded-tl-none flex items-center gap-2 border border-slate-100">
-               <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce"></div>
-               <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce delay-100"></div>
-               <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce delay-200"></div>
-            </div>
-          </div>
-        )}
-      </div>
-
-
-
-      {/* FLOATING INPUT BAR ABOVE NAV */}
-      <footer className="fixed bottom-24 left-0 right-0 px-6 py-4 z-[90] max-w-md mx-auto">
-        <div className="bg-white/80 backdrop-blur-xl p-2 rounded-full border border-slate-100 shadow-2xl flex items-center gap-2">
-          <input
-            type="text"
-            placeholder={usingHiddenAI ? "Admin command..." : "Type your message..."}
-            value={inputText}
-            onChange={e => setInputText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-            className="flex-1 bg-transparent py-3 px-2 text-[14px] font-bold text-gray-700 outline-none placeholder:text-gray-300"
-          />
-
-          <button
-            onClick={handleSend}
-            disabled={isSending || isTyping || !inputText.trim()}
-            className="w-12 h-12 bg-[#00D094] text-white rounded-full shadow-lg disabled:opacity-30 active:scale-90 transition-all flex items-center justify-center shrink-0"
-          >
-            {isSending ? <RefreshCw className="animate-spin" size={18} /> : <Send size={18} className="ml-0.5" />}
-          </button>
+          )}
         </div>
-      </footer>
 
-      {/* Enhanced Customer Care Component */}
-      <EnhancedCustomerCare
-        user={user}
-        isOpen={isEnhancedCustomerCareOpen}
-        onClose={() => setIsEnhancedCustomerCareOpen(false)}
-        isAdmin={false}
-      />
+        {/* Input Area */}
+        <div className="p-3 bg-white border-t border-gray-200">
+          <div className="flex gap-2">
+            <input
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder={usingHiddenAI ? "Admin command..." : "Type your message..."}
+              className="flex-1 bg-gray-100 border border-gray-300 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!inputText.trim() || isTyping}
+              className="bg-[#00D094] hover:bg-[#00b37f] disabled:bg-gray-300 text-white rounded-xl px-4 py-2 transition-colors"
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default Support;
+export default EnhancedCustomerCare;

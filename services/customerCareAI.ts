@@ -13,7 +13,17 @@ export const customerCareAI = {
   async getResponse(message: string): Promise<string> {
     // Use custom AI agent with Pollinations-only processing
     // Each message is processed independently with no memory
-    return await customAIAgent.processUserInput({ text: message });
+
+    // Enhance the message with customer care context
+    const enhancedMessage = `You are a helpful customer care assistant for VIXO investment platform.
+    Provide personalized support based on the user's information and needs.
+    Be professional, empathetic, and solution-oriented.
+    If the user has a problem, try to understand it and suggest appropriate solutions.
+    If the user needs help with their account, investments, withdrawals, or anything else, provide clear guidance.
+
+    Context: ${message}`;
+
+    return await customAIAgent.processUserInput({ text: enhancedMessage });
   },
 
   /**

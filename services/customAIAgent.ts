@@ -90,15 +90,46 @@ export const customAIAgent = {
    */
   async handleTextChat(text: string, controller: AbortController): Promise<string> {
     try {
-      // Send to Pollinations text endpoint
-      const response = await this.runWithTimeoutAndAbort(
-        pollinationsService.queryText(text),
-        3000, // 3 seconds timeout
-        "I'm here, but things are a bit busy right now. Please try again in a moment.",
-        controller.signal
-      );
+      // Check if this is a customer care request and enhance the prompt accordingly
+      if (text.toLowerCase().includes('customer care') ||
+          text.toLowerCase().includes('support') ||
+          text.toLowerCase().includes('vixo') ||
+          text.toLowerCase().includes('account') ||
+          text.toLowerCase().includes('balance') ||
+          text.toLowerCase().includes('withdraw') ||
+          text.toLowerCase().includes('investment') ||
+          text.toLowerCase().includes('refund') ||
+          text.toLowerCase().includes('problem') ||
+          text.toLowerCase().includes('issue') ||
+          text.toLowerCase().includes('help')) {
+        // Enhance the prompt for customer care scenarios
+        const enhancedPrompt = `As a customer care assistant for VIXO investment platform, provide helpful and empathetic support.
+        Address the user's concerns professionally and offer solutions when possible.
+        Be patient, understanding, and provide clear instructions.
+        If the user has a specific issue, acknowledge it and guide them toward resolution.
+        If the user needs help with their account, investments, withdrawals, or anything else, provide clear guidance.
 
-      return response;
+        User's request: ${text}`;
+
+        const response = await this.runWithTimeoutAndAbort(
+          pollinationsService.queryText(enhancedPrompt),
+          5000, // 5 seconds timeout for more complex queries
+          "I'm here, but things are a bit busy right now. Please try again in a moment.",
+          controller.signal
+        );
+
+        return response;
+      } else {
+        // Send to Pollinations text endpoint for general queries
+        const response = await this.runWithTimeoutAndAbort(
+          pollinationsService.queryText(text),
+          3000, // 3 seconds timeout
+          "I'm here, but things are a bit busy right now. Please try again in a moment.",
+          controller.signal
+        );
+
+        return response;
+      }
     } catch (error) {
       console.error("Text chat failed:", error);
       return "I'm here, but things are a bit busy right now. Please try again in a moment.";

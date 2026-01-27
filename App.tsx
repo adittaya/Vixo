@@ -21,6 +21,7 @@ import AboutUs from './pages/AboutUs';
 import BalanceDetails from './pages/BalanceDetails';
 import Records from './pages/Records';
 import HiddenCustomerCare from './components/HiddenCustomerCare';
+import EnhancedCustomerCare from './components/EnhancedCustomerCare';
 import { Home as HomeIcon, Zap, Users, User as UserIcon, ShieldAlert, RefreshCw, MessageCircle, Share2 } from 'lucide-react';
 import { LOGO_IMAGE } from './constants';
 
@@ -51,6 +52,7 @@ const App: React.FC = () => {
   const [admin, setAdmin] = useState<AdminSettings | null>(null);
   const [isSyncing, setIsSyncing] = useState(true);
   const [isHiddenCustomerCareOpen, setIsHiddenCustomerCareOpen] = useState(false);
+  const [isEnhancedCustomerCareOpen, setIsEnhancedCustomerCareOpen] = useState(false);
 
   // Function to handle hidden trigger sequence
   const handleNavClick = (path: string) => {
@@ -179,6 +181,14 @@ const App: React.FC = () => {
           <HiddenCustomerCare
             isOpen={isHiddenCustomerCareOpen}
             onClose={() => setIsHiddenCustomerCareOpen(false)}
+          />
+
+          {/* Enhanced Customer Care Component */}
+          <EnhancedCustomerCare
+            user={currentUser!}
+            isOpen={isEnhancedCustomerCareOpen}
+            onClose={() => setIsEnhancedCustomerCareOpen(false)}
+            isAdmin={false}
           />
         </div>
       </Router>

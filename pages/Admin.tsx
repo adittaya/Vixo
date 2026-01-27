@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Transaction, Purchase, AdminSettings, Product, AuditLog, CommunityPost, SupportMessage } from '../types';
 import { getStore, saveStore, manualProcessIncome, DistributionStats, performHardReversal, getReversalImpact } from '../store';
-import { 
-  Shield, Check, X, User as UserIcon, Wallet, 
+import {
+  Shield, Check, X, User as UserIcon, Wallet,
   Settings, Users, CreditCard, Activity, Search,
   Zap, Power, Edit3, Trash2, Star,
   Copy, Plus, Minus, Upload, Clock, Bell, Info, ChevronLeft, ArrowRight, ShieldCheck,
@@ -13,6 +13,7 @@ import {
   QrCode, ChevronRight, Headphones, Send, Camera, Cpu, CheckCircle2, RotateCcw, Snowflake
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AdminCustomerCare from '../components/AdminCustomerCare';
 
 const MotionDiv = motion.div as any;
 
@@ -70,7 +71,8 @@ const Admin: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [distResult, setDistResult] = useState<DistributionStats | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  
+  const [isAdminCustomerCareOpen, setIsAdminCustomerCareOpen] = useState(false);
+
   const [securityTargetUser, setSecurityTargetUser] = useState<User | null>(null);
   const [editingSecurityField, setEditingSecurityField] = useState<'password' | 'pin' | 'fund' | 'manual_deduct' | null>(null);
   const [tempSecurityVal, setTempSecurityVal] = useState('');
@@ -385,7 +387,15 @@ const Admin: React.FC = () => {
             <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.5em] mt-1">Authorized Access</p>
           </div>
         </div>
-        <button onClick={() => window.location.hash = '/home'} className="px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white/40 text-[10px] font-black uppercase">Terminate</button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsAdminCustomerCareOpen(true)}
+            className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white/80 text-[10px] font-black uppercase hover:bg-white/10 transition-colors"
+          >
+            AI Assistant
+          </button>
+          <button onClick={() => window.location.hash = '/home'} className="px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white/40 text-[10px] font-black uppercase">Terminate</button>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -966,6 +976,13 @@ const Admin: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Admin Customer Care Component */}
+      <AdminCustomerCare
+        isOpen={isAdminCustomerCareOpen}
+        onClose={() => setIsAdminCustomerCareOpen(false)}
+        isAdmin={true}
+      />
     </div>
   );
 };
