@@ -75,10 +75,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, isVisible, onClose }) => 
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Shield className="text-yellow-300" size={28} />
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30">
+              <img
+                src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop"
+                className="w-full h-full object-cover"
+                alt="Simran"
+              />
+            </div>
             <div>
-              <h2 className="font-bold text-xl">Admin Control Panel</h2>
-              <p className="text-sm opacity-80">Manage users and transactions</p>
+              <h2 className="font-bold text-xl">Admin Support Panel</h2>
+              <p className="text-sm opacity-80">Assist users & resolve issues</p>
             </div>
           </div>
           <button 

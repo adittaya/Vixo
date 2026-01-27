@@ -440,34 +440,34 @@ const EnhancedCustomerCare: React.FC<EnhancedCustomerCareProps> = ({ user, isOpe
     <div className="fixed inset-0 bg-black bg-opacity-50 z-[9998] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-md h-[70vh] flex flex-col shadow-2xl">
         {/* Header */}
-        <div 
-          className={`bg-[#00D094] text-white p-4 rounded-t-2xl flex justify-between items-center ${
-            usingHiddenAI ? 'bg-yellow-500' : 'bg-[#00D094]'
+        <div
+          className={`bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 rounded-t-2xl flex justify-between items-center ${
+            usingHiddenAI ? 'from-amber-500 to-orange-600' : 'from-blue-500 to-indigo-600'
           }`}
           onClick={handleHeaderClick}
         >
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/30">
-              <img 
-                src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop" 
-                className="w-full h-full object-cover" 
-                alt="Simran" 
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30">
+              <img
+                src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop"
+                className="w-full h-full object-cover"
+                alt="Simran"
               />
             </div>
             <div>
-              <h3 className="font-bold text-sm">
+              <h3 className="font-bold text-base">
                 {usingHiddenAI ? (
                   <span className="flex items-center gap-1">
-                    <Shield size={14} className="text-white" /> Admin AI
+                    <Shield size={16} className="text-white" /> Admin Support
                   </span>
                 ) : (
                   <span className="flex items-center gap-1">
-                    <Bot size={14} className="text-white" /> Simran
+                    <Headphones size={16} className="text-white" /> Simran (Executive)
                   </span>
                 )}
               </h3>
-              <p className="text-[8px] font-bold uppercase tracking-wider">
-                {usingHiddenAI ? 'ADMIN MODE' : 'ONLINE'}
+              <p className="text-[10px] font-medium opacity-90">
+                {usingHiddenAI ? 'ADMIN MODE - Full Access' : 'Available now - Ready to help'}
               </p>
             </div>
           </div>
@@ -560,19 +560,28 @@ const EnhancedCustomerCare: React.FC<EnhancedCustomerCareProps> = ({ user, isOpe
                 className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 <div className={`
-                  max-w-[85%] rounded-2xl p-3
+                  max-w-[80%] rounded-2xl p-4
                   ${isUser
-                    ? 'bg-blue-600 text-white rounded-tr-none'
-                    : 'bg-gray-200 text-gray-800 rounded-tl-none'
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-br-none'
+                    : 'bg-white text-gray-800 rounded-bl-none border border-gray-100 shadow-sm'
                   }
                 `}>
-                  <div className="text-[8px] font-bold opacity-70 mb-1 uppercase tracking-wider">
-                    {isUser ? 'You' : 'Customer Care'}
-                  </div>
+                  {!isUser && (
+                    <div className="flex items-start gap-2 mb-1">
+                      <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
+                        <img
+                          src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop"
+                          className="w-full h-full object-cover"
+                          alt="Support"
+                        />
+                      </div>
+                      <div className="font-bold text-xs text-blue-600">Simran (Support)</div>
+                    </div>
+                  )}
                   <div className="whitespace-pre-wrap leading-relaxed text-sm">
                     {msg.sender === 'admin' ? renderMessageText(msg.text) : msg.text}
                   </div>
-                  <div className="text-[7px] opacity-50 mt-1 text-right">
+                  <div className={`text-[7px] opacity-60 mt-1 ${isUser ? 'text-right' : 'text-right'}`}>
                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
@@ -582,37 +591,42 @@ const EnhancedCustomerCare: React.FC<EnhancedCustomerCareProps> = ({ user, isOpe
 
           {isTyping && (
             <div className="flex justify-start">
-              <div className="bg-gray-200 rounded-2xl p-3 flex gap-1 items-center">
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="bg-white rounded-2xl p-3 flex items-center gap-2 border border-gray-100 shadow-sm">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150"></div>
+                </div>
+                <span className="text-xs text-gray-500">Simran is typing...</span>
               </div>
             </div>
           )}
         </div>
 
         {/* Input Area */}
-        <div className="p-3 bg-white border-t border-gray-200">
+        <div className="p-3 bg-gray-50 border-t border-gray-200">
           <div className="flex gap-2">
-            <input
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder={usingHiddenAI ? "Admin command..." : "Type your message..."}
-              className="flex-1 bg-gray-100 border border-gray-300 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!inputText.trim() || isTyping}
-              className="bg-[#00D094] hover:bg-[#00b37f] disabled:bg-gray-300 text-white rounded-xl px-4 py-2 transition-colors"
-            >
-              <Send size={18} />
-            </button>
+            <div className="flex-1 bg-white rounded-xl border border-gray-200 flex items-center">
+              <input
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder={usingHiddenAI ? "Admin command..." : "Message Simran..."}
+                className="flex-1 bg-transparent py-3 px-3 focus:outline-none text-sm"
+              />
+              <button
+                onClick={handleSend}
+                disabled={!inputText.trim() || isTyping}
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl px-4 py-2 m-1 disabled:opacity-40 transition-all"
+              >
+                <Send size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

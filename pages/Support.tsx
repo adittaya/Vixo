@@ -455,38 +455,39 @@ const Support: React.FC<Props> = ({ user }) => {
     <div className="bg-[#f8faf9] flex flex-col h-screen max-h-screen overflow-hidden">
       {/* HEADER WITH ADMIN CONTROLS */}
       <header
-        className={`bg-white px-6 pt-12 pb-6 flex items-center gap-4 shrink-0 shadow-sm border-b border-slate-50 z-[100] ${
-          usingHiddenAI ? 'bg-yellow-50 border-yellow-200' : ''
+        className={`bg-gradient-to-r from-blue-50 to-indigo-50 px-6 pt-12 pb-6 flex items-center gap-4 shrink-0 shadow-sm border-b border-blue-100 z-[100] ${
+          usingHiddenAI ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200' : ''
         }`}
         onClick={handleHeaderClick}
       >
-        <button onClick={(e) => { e.stopPropagation(); navigate(-1); }} className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all shrink-0">
+        <button onClick={(e) => { e.stopPropagation(); navigate(-1); }} className="p-2 bg-white rounded-xl text-gray-500 active:scale-95 transition-all shrink-0 shadow-sm">
           <ChevronLeft size={20} />
         </button>
-        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#00D094]/10 shrink-0 relative">
+        <div className="w-14 h-14 rounded-full overflow-hidden border-3 border-white shadow-lg shrink-0 relative">
            <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover" alt="Simran" />
-           <div className="absolute bottom-0 right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>
+           <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
         </div>
         <div className="overflow-hidden flex-1">
-          <div className="flex items-center gap-1.5">
-            <h2 className="text-[15px] font-black text-gray-900 tracking-tight truncate">
-              {usingHiddenAI ? (
-                <span className="flex items-center gap-1">
-                  <Shield className="text-red-500" size={14} /> Admin AI
-                </span>
-              ) : (
-                <>
-                  <Bot size={14} className="text-blue-400" /> Simran
-                </>
-              )}
-            </h2>
-            <CheckCircle2 size={12} className={`shrink-0 ${usingHiddenAI ? 'text-yellow-500' : 'text-blue-500'}`} />
+          <div className="flex items-center gap-2">
+            <div>
+              <h2 className="text-[16px] font-bold text-gray-800 tracking-tight">
+                {usingHiddenAI ? (
+                  <span className="flex items-center gap-1">
+                    <Shield className="text-red-500" size={16} /> Admin Support
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <Headphones size={16} className="text-blue-500" /> Simran (Support Executive)
+                  </span>
+                )}
+              </h2>
+              <p className="text-[10px] font-medium text-gray-600 mt-0.5">
+                {usingHiddenAI
+                  ? 'Admin Mode • Full Access Enabled'
+                  : 'Available now • Ready to help you'}
+              </p>
+            </div>
           </div>
-          <p className="text-[9px] font-black text-[#00D094] uppercase tracking-widest mt-0.5 whitespace-nowrap">
-            {usingHiddenAI
-              ? 'ADMIN MODE • Full Access Enabled'
-              : 'Online • VIXO Support Desk'}
-          </p>
         </div>
         {usingHiddenAI && (
           <div className="bg-red-100 text-red-800 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-wider">
@@ -494,19 +495,19 @@ const Support: React.FC<Props> = ({ user }) => {
           </div>
         )}
         
-        {/* Admin Panel Button */}
+        {/* Admin Panel Button - Now more prominent as main support feature */}
         <button
           onClick={() => setShowAdminPanel(true)}
-          className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all flex items-center gap-1"
+          className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white active:scale-95 transition-all flex items-center gap-1 shadow-md"
         >
           <Shield size={16} />
-          <span className="text-xs font-bold">Admin</span>
+          <span className="text-xs font-bold">Admin Support</span>
         </button>
 
         {/* Admin Controls Button */}
         <button
           onClick={() => setShowAdminControls(!showAdminControls)}
-          className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all"
+          className="p-2 bg-gray-100 rounded-xl text-gray-600 active:scale-95 transition-all"
         >
           {showAdminControls ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
@@ -514,7 +515,7 @@ const Support: React.FC<Props> = ({ user }) => {
         {/* Enhanced Customer Care Button */}
         <button
           onClick={() => setIsEnhancedCustomerCareOpen(true)}
-          className="p-2 bg-gray-50 rounded-xl text-gray-400 active:scale-95 transition-all"
+          className="p-2 bg-gray-100 rounded-xl text-gray-600 active:scale-95 transition-all"
         >
           <Settings size={16} />
         </button>
@@ -591,16 +592,23 @@ const Support: React.FC<Props> = ({ user }) => {
             >
               <div className="max-w-[85%] space-y-1">
                  {isUser ? (
-                   /* USER BUBBLE: GREEN AS PER SCREENSHOT */
-                   <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#00D094] text-white px-6 py-4 rounded-[2rem] rounded-tr-none shadow-lg relative">
-                        {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-2 border border-white/20 max-h-60 object-cover" alt="Attachment" />}
-                        <p className="text-[14px] font-bold leading-relaxed">{msg.text}</p>
+                   /* USER BUBBLE: More natural look */
+                   <MotionDiv initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-5 py-3 rounded-2xl rounded-tr-none shadow-md relative">
+                        {msg.image && <img src={msg.image} className="w-full rounded-xl mb-2 border border-white/30 max-h-40 object-cover" alt="Attachment" />}
+                        <p className="text-[14px] font-medium leading-relaxed">{msg.text}</p>
                      </MotionDiv>
                    ) : (
-                     /* ADMIN BUBBLE: LIGHT GRAY AS PER SCREENSHOT */
-                     <MotionDiv initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#f1f5f9] text-[#2c3e50] px-6 py-6 rounded-[2.5rem] rounded-tl-none shadow-sm border border-slate-100 relative">
-                        {msg.image && <img src={msg.image} className="w-full rounded-2xl mb-4 border border-slate-200 max-h-60 object-cover" alt="Attachment" />}
-                        {renderMessageText(msg.text)}
+                     /* SUPPORT BUBBLE: More human-like appearance */
+                     <MotionDiv initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white text-gray-800 px-5 py-4 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 relative">
+                        <div className="flex items-start gap-2">
+                          <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                            <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover" alt="Support" />
+                          </div>
+                          <div className="flex-1">
+                            {msg.image && <img src={msg.image} className="w-full rounded-xl mb-3 border border-gray-200 max-h-40 object-cover" alt="Attachment" />}
+                            {renderMessageText(msg.text)}
+                          </div>
+                        </div>
                      </MotionDiv>
                    )}
                  <p className={`text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1.5 ${isUser ? 'text-right mr-2' : 'text-left ml-2'}`}>
@@ -613,10 +621,13 @@ const Support: React.FC<Props> = ({ user }) => {
 
         {isTyping && (
           <div className="flex justify-start">
-            <div className="bg-[#f1f5f9] p-4 rounded-[2rem] rounded-tl-none flex items-center gap-2 border border-slate-100">
-               <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce"></div>
-               <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce delay-100"></div>
-               <div className="w-1.5 h-1.5 bg-[#00D094] rounded-full animate-bounce delay-200"></div>
+            <div className="bg-white p-3 rounded-2xl rounded-tl-none flex items-center gap-2 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75"></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150"></div>
+              </div>
+              <span className="text-xs text-gray-500 ml-1">Simran is typing...</span>
             </div>
           </div>
         )}
@@ -626,23 +637,24 @@ const Support: React.FC<Props> = ({ user }) => {
 
       {/* FLOATING INPUT BAR ABOVE NAV */}
       <footer className="fixed bottom-24 left-0 right-0 px-6 py-4 z-[90] max-w-md mx-auto">
-        <div className="bg-white/80 backdrop-blur-xl p-2 rounded-full border border-slate-100 shadow-2xl flex items-center gap-2">
-          <input
-            type="text"
-            placeholder={usingHiddenAI ? "Admin command..." : "Type your message..."}
-            value={inputText}
-            onChange={e => setInputText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-            className="flex-1 bg-transparent py-3 px-2 text-[14px] font-bold text-gray-700 outline-none placeholder:text-gray-300"
-          />
-
-          <button
-            onClick={handleSend}
-            disabled={isSending || isTyping || !inputText.trim()}
-            className="w-12 h-12 bg-[#00D094] text-white rounded-full shadow-lg disabled:opacity-30 active:scale-90 transition-all flex items-center justify-center shrink-0"
-          >
-            {isSending ? <RefreshCw className="animate-spin" size={18} /> : <Send size={18} className="ml-0.5" />}
-          </button>
+        <div className="bg-white p-2 rounded-2xl border border-gray-200 shadow-lg flex items-center gap-2">
+          <div className="flex-1 bg-gray-50 rounded-xl flex items-center">
+            <input
+              type="text"
+              placeholder={usingHiddenAI ? "Admin command..." : "Message Simran..."}
+              value={inputText}
+              onChange={e => setInputText(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              className="w-full bg-transparent py-3 px-4 text-[15px] font-medium text-gray-700 outline-none placeholder:text-gray-400"
+            />
+            <button
+              onClick={handleSend}
+              disabled={isSending || isTyping || !inputText.trim()}
+              className="mr-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-2 rounded-full disabled:opacity-40 active:scale-95 transition-all"
+            >
+              {isSending ? <RefreshCw className="animate-spin" size={18} /> : <Send size={18} />}
+            </button>
+          </div>
         </div>
       </footer>
 
