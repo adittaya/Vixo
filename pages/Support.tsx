@@ -75,17 +75,30 @@ const Support: React.FC<Props> = ({ user }) => {
 
     let aiResponse;
 
+    // Check if this is an image generation request
+    const isImageGenerationRequest = lastUserText.toLowerCase().includes('generate image') ||
+                                     lastUserText.toLowerCase().includes('create image') ||
+                                     lastUserText.toLowerCase().includes('make image') ||
+                                     lastUserText.toLowerCase().includes('image of');
+
     // Use the customer care AI for all interactions
     try {
-      // Get response from the customer care AI
-      const response = await customerCareAI.getResponse(lastUserText);
-
-      // Check if the response contains admin commands (only when in hidden mode)
-      if (usingHiddenAI && (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:'))) {
-        const result = await executeAdminAction(response);
-        aiResponse = { text: result };
+      let response;
+      if (isImageGenerationRequest) {
+        // Generate an image using Pollinations
+        response = await customerCareAI.generateImage(lastUserText);
+        aiResponse = { text: `I generated an image for you: [IMAGE_LINK]${response}[/IMAGE_LINK]` };
       } else {
-        aiResponse = { text: response };
+        // Get response from the customer care AI
+        response = await customerCareAI.getResponse(lastUserText);
+
+        // Check if the response contains admin commands (only when in hidden mode)
+        if (usingHiddenAI && (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:'))) {
+          const result = await executeAdminAction(response);
+          aiResponse = { text: result };
+        } else {
+          aiResponse = { text: response };
+        }
       }
     } catch (error) {
       console.error("Error with customer care AI:", error);
@@ -509,12 +522,35 @@ const Support: React.FC<Props> = ({ user }) => {
 
   const renderMessageText = (text: string) => {
     const actionRegex = /\[ACTION:(RECHARGE|WITHDRAW|HOME)\]/g;
-    const cleanText = text.replace(actionRegex, '').trim();
+    const imageLinkRegex = /\[IMAGE_LINK\](.*?)\[\/IMAGE_LINK\]/g;
+    const cleanText = text.replace(actionRegex, '').replace(imageLinkRegex, '').trim();
     const actions = Array.from(text.matchAll(actionRegex)).map(m => m[1]);
+    const imageLinks = Array.from(text.matchAll(imageLinkRegex)).map(m => m[1]);
 
     return (
       <div className="space-y-4">
         <p className="whitespace-pre-wrap leading-relaxed text-[15px] text-[#2c3e50] font-medium">{cleanText}</p>
+
+        {imageLinks.length > 0 && (
+          <div className="space-y-2">
+            {imageLinks.map((link, i) => (
+              <a
+                key={i}
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full max-w-xs mx-auto"
+              >
+                <img
+                  src={link}
+                  alt="Generated content"
+                  className="w-full rounded-lg border border-gray-200 max-h-60 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+
         {actions.length > 0 && (
           <div className="flex flex-col gap-2 pt-2">
             {actions.map((act, i) => (

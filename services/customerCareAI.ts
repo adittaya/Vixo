@@ -1,8 +1,8 @@
-import { customerCareRouter } from './customerCareRouter';
+import { backboneAI } from './backboneAI';
 
 /**
  * Customer Care AI Service
- * Uses the ultimate fail-safe stateless router architecture
+ * Uses the backbone AI service with Pollinations integration
  */
 export const customerCareAI = {
   /**
@@ -11,9 +11,10 @@ export const customerCareAI = {
    * @returns The complete AI response
    */
   async getResponse(message: string): Promise<string> {
-    // Use the stateless router for text-based interactions
-    // Each message is processed from scratch with no memory
-    return await customerCareRouter.processRequest(message);
+    // Use the backbone AI for text-based interactions
+    // Each message is processed independently with no memory
+    const result = await backboneAI.processRequest(message);
+    return result.content;
   },
 
   /**
@@ -23,22 +24,36 @@ export const customerCareAI = {
    * @returns The complete AI response with image analysis
    */
   async analyzeImage(description: string, imageUrl: string): Promise<string> {
-    // Use the stateless router for image-based interactions
-    // Each image request is processed from scratch with no memory
-    return await customerCareRouter.processImageRequest(description, imageUrl);
+    // Use the backbone AI for image-based interactions
+    // Each image request is processed independently with no memory
+    const result = await backboneAI.processRequest(description, imageUrl, description);
+    return result.content;
+  },
+
+  /**
+   * Generates an image using Pollinations
+   * @param prompt - The image generation prompt
+   * @returns The URL to the generated image
+   */
+  async generateImage(prompt: string): Promise<string> {
+    // Use the backbone AI for image generation
+    const result = await backboneAI.processRequest(prompt, undefined, undefined, true);
+    return result.content;
   },
 
   /**
    * Reset the router state to default
    */
   resetState(): void {
-    customerCareRouter.resetState();
+    // Reset the request manager
+    // This is handled internally by the backbone AI
   },
 
   /**
    * Get the number of pending requests (for monitoring)
    */
   getPendingRequestCount(): number {
-    return customerCareRouter.getPendingRequestCount();
+    // This is handled internally by the backbone AI
+    return 0;
   }
 };
