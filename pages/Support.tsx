@@ -113,9 +113,6 @@ const Support: React.FC<Props> = ({ user }) => {
       console.error("Error with customer care AI:", error);
       aiResponse = { text: "I'm having trouble connecting right now. Please try again in a moment." };
       if (usingHiddenAI) setUsingHiddenAI(false);
-    } finally {
-      // Ensure typing indicator is always cleared in the end
-      setIsTyping(false);
     }
 
     try {
@@ -135,7 +132,8 @@ const Support: React.FC<Props> = ({ user }) => {
       await saveStore({ supportMessages: updatedStoreMessages });
     } catch (error) {
       console.error("Error saving admin message to store:", error);
-      // Still ensure typing indicator is cleared even if saving fails
+    } finally {
+      // Ensure typing indicator is always cleared in the end
       setIsTyping(false);
     }
   }, [user.id, usingHiddenAI]);
@@ -170,20 +168,12 @@ const Support: React.FC<Props> = ({ user }) => {
       setInputText('');
       setInputImage('');
 
-      // Process AI response separately
+      // Process AI response - await the response to ensure proper flow
       // Important: Always trigger AI response for both text and image messages
       const aiMessage = userMsgText || (currentImage ? "User sent an image attachment." : "User sent a message.");
 
-      // Use setTimeout to ensure the UI updates properly before triggering AI response
-      setTimeout(async () => {
-        try {
-          await triggerAIResponse(aiMessage);
-        } catch (error) {
-          console.error("Error in AI response:", error);
-          // Ensure typing indicator is cleared even if AI response fails
-          setIsTyping(false);
-        }
-      }, 100); // Small delay to ensure UI updates
+      // Await the AI response to ensure proper sequencing
+      await triggerAIResponse(aiMessage);
 
     } catch (error) {
       console.error("Error sending message:", error);
