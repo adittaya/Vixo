@@ -113,6 +113,8 @@ const Support: React.FC<Props> = ({ user }) => {
     } finally {
       // Ensure typing indicator is always cleared in the end
       setIsTyping(false);
+      // Refresh messages to ensure UI is up to date
+      refreshMessages();
     }
   }, [user.id, usingHiddenAI]);
 
@@ -218,6 +220,9 @@ const Support: React.FC<Props> = ({ user }) => {
         setSelectedImage(null);
         setImageDescription('');
         setIsSending(false); // Hide loading state
+
+        // Refresh messages to ensure UI is up to date
+        refreshMessages();
       }, 2000);
     } catch (error) {
       console.error("Error submitting image request:", error);
