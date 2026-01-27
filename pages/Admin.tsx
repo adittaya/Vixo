@@ -318,7 +318,7 @@ const Admin: React.FC = () => {
     }
   };
 
-  const handleSaveProduct = async (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingProduct) return;
     const store = getStore();

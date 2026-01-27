@@ -24,7 +24,7 @@ const Register: React.FC = () => {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData.name || !formData.mobile || !formData.password) {
       setError('Please fill all fields');

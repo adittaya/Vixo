@@ -19,8 +19,7 @@ const Withdraw: React.FC<Props> = ({ user }) => {
   const [msg, setMsg] = useState({ type: '', text: '' });
   const navigate = useNavigate();
 
-  const handleWithdraw = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleWithdraw = () => {
     const store = getStore();
     const numAmount = parseInt(amount);
 

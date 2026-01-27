@@ -39,7 +39,7 @@ const PersonalInfo: React.FC<Props> = ({ user }) => {
     window.location.reload();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     if (modal.type === 'bank') {
