@@ -69,9 +69,9 @@ export const customAIAgent = {
 
       // STEP 2: Send to Pollinations with context
       const prompt = `Explain this screenshot to the user in simple language: ${ocrText}`;
-      
+
       const response = await this.runWithTimeoutAndAbort(
-        pollinationsService.generateImage(prompt), // Using generateImage as it connects to Pollinations
+        pollinationsService.queryText(prompt), // Using queryText for text responses
         3000, // 3 seconds timeout
         "Image analysis is taking longer than usual. Please try again.",
         controller.signal

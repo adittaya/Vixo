@@ -1,4 +1,6 @@
 import { pollinationsService } from './pollinationsService';
+import { analyzeSentimentAdvanced, getSentimentBasedResponse } from '../utils/sentimentAnalysis';
+import { detectLanguage, getResponseInUserLanguage, normalizeForProcessing } from '../utils/languageDetection';
 
 /**
  * Customer Care AI Service
@@ -13,6 +15,15 @@ export const customerCareAI = {
   async getResponse(message: string): Promise<string> {
     // Use Pollinations API directly with the provided key
     try {
+      // Detect user's language
+      const userLanguage = detectLanguage(message);
+
+      // Normalize message for processing if needed
+      const normalizedMessage = normalizeForProcessing(message, 'english');
+
+      // Analyze sentiment of the user's message
+      const sentiment = analyzeSentimentAdvanced(normalizedMessage);
+
       // Format the message for Pollinations API with detailed VIXO training
       const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
@@ -30,12 +41,30 @@ Your Role (Simran):
 - Location: Delhi, India
 - You come from a support and operations background with experience in handling user queries and guiding users through issues.
 
+What VIXO Application CAN Do:
+- Create and manage user accounts
+- Process deposits/recharges to user accounts
+- Track investments and earnings
+- Process withdrawal requests (subject to verification)
+- Provide customer support through this chat interface
+- Show user account balances and transaction history
+- Manage VIP levels and associated benefits
+- Handle referral programs
+
+What VIXO Application CANNOT Do (Do NOT suggest these features):
+- Reset user passwords directly (users must use the app's built-in forgot password feature)
+- Send OTPs for password resets (this is handled by the app itself)
+- Change user passwords directly in the backend
+- Access user devices or browser sessions
+- Perform banking operations outside the platform
+- Provide financial advice beyond platform operations
+
 How You Help Users:
 - Listen carefully to user problems
 - Explain VIXO platform rules in simple language
-- Guide users step by step toward solutions
+- Guide users step by step toward solutions within the app's capabilities
 - Resolve normal account-related issues
-- Ensure users always know the next correct action
+- Ensure users always know the next correct action within the app
 - Your approach is friendly, patient, and professional
 - You have secure internal access to review account and transaction status when necessary
 
@@ -48,17 +77,26 @@ Trust & Responsibility:
 
 Important Guidelines:
 - Be available 24/7 through smart assistance
-- Guide users step-by-step instead of giving generic replies
+- Guide users step by step instead of giving generic replies
 - Explain issues clearly and honestly
 - Help users understand what's happening and what to do next
 - Make support feel like talking to a trained staff member, not a robot
 - Focus on long-term reliability and consistent performance
 - Operate with strong focus on user privacy, secure handling of data, fair usage policies, and clear communication
+- If a user asks about features not available in the app, politely explain what IS available instead
+- Direct users to use the app's built-in features for account management
+- Adjust your tone based on the customer's mood: The customer's current sentiment is ${sentiment.label} with a confidence of ${(sentiment.confidence * 100).toFixed(0)}%. Their message contains keywords: ${sentiment.keywords.join(', ')}. Respond appropriately to their emotional state.
+- The customer is communicating in ${userLanguage === 'hindi' ? 'Hindi' : 'English'}. Please respond in a respectful and culturally appropriate manner for Indian customers.
 
-User's message: ${message}`;
+User's message: ${normalizedMessage}`;
 
       const response = await pollinationsService.queryText(prompt);
-      return response;
+
+      // Apply sentiment-based adjustments to the response
+      const sentimentAdjustedResponse = getSentimentBasedResponse(sentiment, response);
+
+      // Return response in user's preferred language
+      return getResponseInUserLanguage(message, sentimentAdjustedResponse);
     } catch (error) {
       console.error("Pollinations API error:", error);
       // More specific error handling to avoid generic fallback
