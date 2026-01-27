@@ -118,7 +118,7 @@ const Support: React.FC<Props> = ({ user }) => {
             aiResponse = { text: `I generated an image for you: [IMAGE_LINK]${response}[/IMAGE_LINK]` };
           } else {
             // Get response from the customer care AI with personalized context
-            response = await customerCareAI.getResponse(userContext, user.id);
+            response = await customerCareAI.getResponse(userContext, user);
 
             // Check if the response contains admin commands (only when in hidden mode)
             if (usingHiddenAI && (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:'))) {

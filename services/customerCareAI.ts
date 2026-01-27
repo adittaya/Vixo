@@ -15,18 +15,16 @@ export const customerCareAI = {
    * @param message - The customer's inquiry message
    * @returns The complete AI response
    */
-  async getResponse(message: string, userId?: string): Promise<string> {
-    // Check if this is a problem that can be resolved directly with admin panel
-    if (userId) {
-      // Try to process the request using admin panel functionality
-      const adminResult = await this.processUserRequest(message, userId);
-      if (adminResult.success) {
-        // If admin panel successfully resolved the issue, return the success message
-        return adminResult.message;
-      }
+  async getResponse(message: string, user?: any): Promise<string> {
+    // Import the advanced customer care AI
+    const { advancedCustomerCareAI } = await import('./advancedCustomerCareAI');
+
+    // If user object is provided, use the advanced system with user-specific features
+    if (user) {
+      return await advancedCustomerCareAI.getResponse(message, user);
     }
 
-    // If admin panel couldn't resolve or no userId provided, use AI for general response
+    // If no user provided, fall back to basic response
     try {
       // Detect user's language
       const userLanguage = detectLanguage(message);
