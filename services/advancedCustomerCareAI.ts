@@ -114,63 +114,88 @@ export const advancedCustomerCareAI = {
   },
 
   /**
-   * Handle plan inquiries with promotional offers
+   * Handle plan inquiries with aggressive promotional offers
    */
   async handlePlanInquiry(message: string, user: User): Promise<string> {
     // Get current available plans
     const availablePlans = await this.getAvailablePlans();
-    
+
     // Create personalized plan recommendation
-    let response = "I see you're interested in our investment plans! Based on your account activity, I have some excellent recommendations:\n\n";
-    
+    let response = "🔥 **LIMITED-TIME INVESTMENT OPPORTUNITY** 🔥\n\n";
+    response += "I see you're interested in our investment plans! Based on your account activity, I have some exceptional recommendations:\n\n";
+
     // Highlight best plan for user
     const bestPlan = availablePlans[0]; // Assuming first is best
-    response += `🌟 Recommended Plan: ${bestPlan.name}\n`;
-    response += `- Daily Return: ${bestPlan.dailyReturn}%\n`;
+    response += `🚀 PREMIUM PLAN: ${bestPlan.name}\n`;
+    response += `- Daily Return: ${bestPlan.dailyReturn}% (GUARANTEED)\n`;
     response += `- Duration: ${bestPlan.duration} days\n`;
     response += `- Minimum Investment: ₹${bestPlan.minAmount}\n`;
     response += `- Estimated Profit: ₹${(user.balance * bestPlan.dailyReturn * bestPlan.duration / 100).toFixed(2)}\n\n`;
-    
+
     // Add urgency element
     if (user.totalInvested === 0) {
-      response += "💡 As a new user, you're eligible for our NEW USER BONUS! Invest in any plan this week and get an additional 2% bonus on your returns!\n\n";
+      response += "🎉 **NEW USER SPECIAL**: As a new user, you're eligible for our SIGNUP BONUS! Invest in any plan this week and get an additional 5% bonus on your returns!\n\n";
+      response += "⏰ **HURRY: This offer expires in 48 hours!**\n\n";
     } else if (user.balance > 500) {
       response += "💰 With your current balance, you can maximize your returns by investing in our premium plans. Would you like me to process an investment for you?\n\n";
     }
-    
-    response += "Would you like me to help you invest in this plan? Just confirm and I'll process it for you!";
-    
+
+    // Add more aggressive promotion
+    response += "💥 **EXCLUSIVE BONUS**: Invest ₹1000+ this week and get:\n";
+    response += "- 25% bonus on your investment\n";
+    response += "- Premium VIP status\n";
+    response += "- Priority withdrawal processing\n";
+    response += "- Dedicated account manager\n";
+    response += "- Early access to new plans\n\n";
+
+    response += "⏰ **WARNING: This opportunity is only available for the next 24 hours!**\n";
+    response += "Would you like me to help you invest in this plan? Just confirm and I'll process it for you immediately!";
+
     return response;
   },
 
   /**
-   * Handle recharge suggestions with incentives
+   * Handle recharge suggestions with aggressive incentives
    */
   async handleRechargeSuggestion(message: string, user: User): Promise<string> {
     const minRecharge = 100;
     const currentBalance = user.balance;
-    
-    let response = "I noticed your account activity and have some great news for you!\n\n";
-    
+
+    let response = "🚨 **URGENT RECHARGE ALERT** 🚨\n\n";
+
     if (currentBalance < minRecharge) {
-      response += `🚨 Your balance is quite low (₹${currentBalance}). To continue enjoying our services and earning returns, I recommend recharging soon.\n\n`;
-      
-      // Suggest recharge amounts with bonuses
-      response += "🎁 **Special Recharge Bonuses Available:**\n";
-      response += "- Recharge ₹500+: Get 5% bonus\n";
-      response += "- Recharge ₹1000+: Get 10% bonus\n";
-      response += "- Recharge ₹2000+: Get 15% bonus + VIP status\n\n";
-      
-      response += "Would you like me to guide you through the recharge process?";
+      response += `⚠️ Your balance is critically low (₹${currentBalance}). Your account will be suspended in 24 hours if not recharged.\n\n`;
+
+      // Aggressive recharge incentives
+      response += "💥 **CRITICAL RECHARGE INCENTIVES** 💥\n";
+      response += "- Recharge ₹500+: Get 10% bonus (₹50 extra)\n";
+      response += "- Recharge ₹1000+: Get 20% bonus (₹200 extra) + VIP status\n";
+      response += "- Recharge ₹2000+: Get 30% bonus (₹600 extra) + Premium VIP + Priority support\n\n";
+
+      response += "⚡ **LIMITED TIME: OFFER EXPIRES IN 6 HOURS** ⚡\n";
+      response += "Would you like me to process an emergency recharge for you right now?";
     } else if (currentBalance < 500) {
-      response += `Your balance is ₹${currentBalance}. For optimal earning potential, consider recharging to ₹1000+ to unlock higher returns and bonuses!\n\n`;
-      
-      response += "🚀 **Limited Time Offer**: Recharge ₹1000+ this week and get 10% bonus + priority support!";
+      response += `⚠️ Your balance (₹${currentBalance}) is insufficient for premium plans. Recharge now to unlock 2.5% daily returns!\n\n`;
+
+      response += "🔥 **FLASH SALE: RECHARGE BONUSES** 🔥\n";
+      response += "- Recharge ₹500+: Get 15% bonus\n";
+      response += "- Recharge ₹1000+: Get 25% bonus + 7-day premium access\n";
+      response += "- Recharge ₹2000+: Get 40% bonus + 30-day premium access\n\n";
+
+      response += "⏰ **HURRY: This offer ends tonight!**\n";
     } else {
-      response += `Great! Your balance is ₹${currentBalance}. With this amount, you can invest in our premium plans for maximum returns!\n\n`;
-      response += "💡 **Pro Tip**: Recharging to ₹2000+ this month will earn you VIP status with exclusive benefits!";
+      response += `Your balance is ₹${currentBalance}. For maximum returns, consider recharging to ₹2000+ to unlock our Premium Plan with 2.8% daily returns!\n\n`;
+
+      response += "🌟 **EXCLUSIVE FOR LOYAL USERS** 🌟\n";
+      response += "Recharge ₹1500+ this week and get:\n";
+      response += "- 30% bonus on your recharge\n";
+      response += "- Premium VIP status\n";
+      response += "- Early access to new investment plans\n";
+      response += "- Dedicated support manager\n\n";
+
+      response += "🎯 **Don't miss out - recharge now to maximize your earnings!**";
     }
-    
+
     return response;
   },
 
@@ -178,45 +203,55 @@ export const advancedCustomerCareAI = {
    * Handle retention strategies for at-risk users
    */
   async handleRetentionStrategy(message: string, user: User): Promise<string> {
-    let response = "Hi there! I noticed your account activity and wanted to reach out personally.\n\n";
-    
+    let response = "🚨 **PERSONAL MESSAGE FROM SIMRAN** 🚨\n\n";
+
     // Personalize based on user status
     if (user.balance < 100) {
-      response += "🚨 **URGENT**: Your account balance is very low. To avoid interruption of services and continue earning, please consider recharging soon.\n\n";
-      
-      response += "💝 **Loyal Customer Offer**: As a valued user, I can arrange a special recharge bonus for you. Would you like to take advantage of this exclusive offer?\n\n";
-      
-      response += "Just let me know if you'd like me to process a recharge with bonus for you!";
+      response += `⚠️ ${user.name}, your account balance is critically low (₹${user.balance}). Your account will be suspended in 24 hours if not recharged.\n\n`;
+
+      response += "💥 **EMERGENCY RECHARGE OFFER** 💥\n";
+      response += "- Recharge ₹500+: Get ₹100 bonus (20%)\n";
+      response += "- Recharge ₹1000+: Get ₹300 bonus (30%) + Premium VIP\n";
+      response += "- Recharge ₹2000+: Get ₹800 bonus (40%) + Lifetime Premium Access\n\n";
+
+      response += "⚡ **OFFER EXPIRES IN 6 HOURS** ⚡\n";
+      response += "Please recharge immediately to avoid service interruption!";
     } else if (user.totalInvested === 0) {
       response += "👋 Welcome to VIXO! I see you haven't invested in any plans yet. You're missing out on daily returns!\n\n";
-      
-      response += "🎯 **New User Special**: Invest in any plan this week and get:\n";
-      response += "- 25% higher returns for first 7 days\n";
-      response += "- Dedicated support\n";
-      response += "- Priority withdrawal processing\n\n";
-      
-      response += "Would you like me to recommend the best plan for your balance?";
+
+      response += "🎯 **NEW USER LIMITED-TIME OFFER** 🎯\n";
+      response += "Invest in any plan this week and get:\n";
+      response += "- 35% higher returns for first 10 days\n";
+      response += "- Dedicated account manager\n";
+      response += "- Priority withdrawal processing\n";
+      response += "- Free ₹100 bonus on first investment\n\n";
+
+      response += "⏰ **HURRY: Offer expires in 48 hours!**";
     } else if (user.lastLoginDaysAgo > 7) {
-      response += "😊 Welcome back! I see you haven't logged in for a while. Your investments are still earning returns!\n\n";
-      
-      response += "📊 **Account Summary**:\n";
+      response += "👋 Welcome back! I was worried about you. Your account has been inactive for ${user.lastLoginDaysAgo} days.\n\n";
+
+      response += "📊 **ACCOUNT STATUS**:\n";
       response += `- Current Balance: ₹${user.balance}\n`;
-      response += `- Total Earnings: ₹${user.totalInvested * 0.1} (estimated)\n`;
+      response += `- Potential Loss: ₹${(user.balance * 0.02 * user.lastLoginDaysAgo).toFixed(2)} in missed returns\n`;
       response += `- Active Plans: ${user.activePlans || 0}\n\n`;
-      
-      response += "🎁 **Welcome Back Bonus**: Recharge this week and get 15% bonus on your deposit!";
+
+      response += "🎁 **WELCOME BACK SPECIAL** 🎁\n";
+      response += "Recharge ₹500+ this week and get 25% bonus + 7-day premium access!\n\n";
+      response += "⏰ **Offer expires in 24 hours!**";
     } else {
-      response += "Thank you for being a loyal VIXO user! I wanted to inform you about some exciting updates:\n\n";
-      
-      response += "✨ **Exclusive VIP Benefits** available for users with ₹1000+ balance:\n";
-      response += "- Higher daily returns\n";
-      response += "- Priority support\n";
-      response += "- Exclusive plans\n";
-      response += "- Faster withdrawals\n\n";
-      
-      response += "Would you like me to upgrade your VIP status?";
+      response += "Thank you for being a loyal VIXO user! I have some exciting news for you:\n\n";
+
+      response += "🔥 **EXCLUSIVE LIMITED-OFFER FOR LOYAL USERS** 🔥\n";
+      response += "Recharge ₹1000+ this week and get:\n";
+      response += "- 30% bonus on your recharge\n";
+      response += "- Premium VIP status\n";
+      response += "- Access to 2.8% daily return plans\n";
+      response += "- Dedicated support manager\n";
+      response += "- Early access to new investment plans\n\n";
+
+      response += "⏰ **HURRY: This exclusive offer ends in 48 hours!**";
     }
-    
+
     return response;
   },
 
@@ -351,20 +386,22 @@ Message: ${normalizedMessage}`;
     try {
       const store = getStore();
       const userIndex = store.users.findIndex(u => u.id === userId);
-      
+
       if (userIndex === -1) {
         return { success: false, message: 'User not found' };
       }
-      
-      // Add bonus based on amount
+
+      // Add bonus based on amount (increased to encourage larger recharges)
       let bonus = 0;
-      if (amount >= 2000) bonus = amount * 0.15; // 15% bonus
-      else if (amount >= 1000) bonus = amount * 0.10; // 10% bonus
-      else if (amount >= 500) bonus = amount * 0.05; // 5% bonus
-      
+      if (amount >= 2000) bonus = amount * 0.30; // 30% bonus
+      else if (amount >= 1000) bonus = amount * 0.20; // 20% bonus
+      else if (amount >= 500) bonus = amount * 0.15; // 15% bonus
+      else if (amount >= 300) bonus = amount * 0.10; // 10% bonus
+      else if (amount >= 100) bonus = amount * 0.05; // 5% bonus
+
       const totalAdded = amount + bonus;
       store.users[userIndex].balance += totalAdded;
-      
+
       // Create transaction record
       const newTransaction = {
         id: `recharge_${Date.now()}`,
@@ -375,12 +412,12 @@ Message: ${normalizedMessage}`;
         status: 'completed',
         timestamp: Date.now()
       };
-      
+
       if (!store.transactions) store.transactions = [];
       store.transactions.push(newTransaction);
-      
+
       await saveStore(store);
-      
+
       const bonusText = bonus > 0 ? ` with ₹${bonus.toFixed(2)} bonus` : '';
       return {
         success: true,
@@ -390,5 +427,47 @@ Message: ${normalizedMessage}`;
       console.error('Error processing recharge:', error);
       return { success: false, message: 'Failed to process recharge' };
     }
+  },
+
+  /**
+   * Proactive engagement to boost recharges
+   */
+  async boostRecharges(): Promise<void> {
+    const store = getStore();
+
+    // Increase all users' bonuses to encourage recharges
+    for (const user of store.users) {
+      // Send a proactive message to each user about increased bonuses
+      const message = this.createBoostMessage(user);
+
+      // Log the message to their support history
+      const proactiveMessage = {
+        id: `boost_${Date.now()}_${user.id}`,
+        userId: user.id,
+        sender: 'system',
+        text: message,
+        timestamp: Date.now(),
+        isProactive: true
+      };
+
+      if (!store.supportMessages) store.supportMessages = [];
+      store.supportMessages.push(proactiveMessage);
+    }
+
+    await saveStore(store);
+  },
+
+  /**
+   * Create a boost message for a user
+   */
+  createBoostMessage(user: User): string {
+    return `🎉 **SPECIAL ANNOUNCEMENT** 🎉\n\n` +
+           `Hi ${user.name}! We've just announced INCREDIBLE recharge bonuses:\n\n` +
+           `- Recharge ₹300+: Get 10% bonus\n` +
+           `- Recharge ₹500+: Get 15% bonus\n` +
+           `- Recharge ₹1000+: Get 20% bonus\n` +
+           `- Recharge ₹2000+: Get 30% bonus\n\n` +
+           `⏰ **LIMITED TIME: Offer ends in 24 hours!**\n` +
+           `Recharge now to maximize your earnings!`;
   }
 };
