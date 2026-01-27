@@ -74,7 +74,7 @@ const Support: React.FC<Props> = ({ user }) => {
     let aiResponse;
 
     // Check if password-related query
-    const isPasswordRelated = customerCareAI.isPasswordRelated(lastUserText);
+    const isPasswordRelated = await customerCareAI.isPasswordRelated(lastUserText);
 
     if (isPasswordRelated) {
       // Generate password-specific response
@@ -82,7 +82,7 @@ const Support: React.FC<Props> = ({ user }) => {
       aiResponse = { text: passwordResponse };
     } else {
       // Check if verification is required for this request
-      const requiresVerification = customerCareAI.requiresVerification(lastUserText);
+      const requiresVerification = await customerCareAI.requiresVerification(lastUserText);
 
       if (requiresVerification) {
         // Generate verification request

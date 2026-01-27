@@ -176,15 +176,24 @@ There was an issue processing the user's request. Generate a helpful, empathetic
    * @param message - The user's inquiry message
    * @returns Boolean indicating if verification is required
    */
-  requiresVerification(message: string): boolean {
-    const verificationKeywords = [
-      'withdraw', 'withdrawal', 'money transfer',
-      'security', 'verification', 'identity', 'personal info',
-      'bank details', 'payment', 'transaction', 'account access'
-    ];
+  async requiresVerification(message: string): Promise<boolean> {
+    const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
-    const lowerMessage = message.toLowerCase();
-    return verificationKeywords.some(keyword => lowerMessage.includes(keyword));
+The user has asked: "${message}"
+
+Analyze this request and determine if it requires verification for security purposes. Return "YES" if verification is required, or "NO" if it does not require verification. Only respond with "YES" or "NO".`;
+
+    try {
+      const response = await pollinationsService.queryText(prompt);
+      return response.trim().toUpperCase() === 'YES';
+    } catch (error) {
+      console.error("Error determining verification requirement:", error);
+      // Conservative approach: if uncertain, assume verification is needed
+      return message.toLowerCase().includes('withdraw') ||
+             message.toLowerCase().includes('money') ||
+             message.toLowerCase().includes('transfer') ||
+             message.toLowerCase().includes('security');
+    }
   },
 
   /**
@@ -227,15 +236,25 @@ Generate a helpful, friendly response that explains why verification is needed f
    * @param message - The user's inquiry message
    * @returns Boolean indicating if it's a password-related query
    */
-  isPasswordRelated(message: string): boolean {
-    const passwordKeywords = [
-      'password', 'forgot password', 'change password', 'reset password',
-      'forgot my password', 'password kaise badle', 'password kya hai',
-      'password bhool gaya', 'password bhool gya', 'password bhool gai'
-    ];
+  async isPasswordRelated(message: string): Promise<boolean> {
+    const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
-    const lowerMessage = message.toLowerCase();
-    return passwordKeywords.some(keyword => lowerMessage.includes(keyword));
+The user has asked: "${message}"
+
+Analyze this request and determine if it is related to password issues (such as forgetting, resetting, changing, or having problems with their password). Return "YES" if it is password-related, or "NO" if it is not password-related. Only respond with "YES" or "NO".`;
+
+    try {
+      const response = await pollinationsService.queryText(prompt);
+      return response.trim().toUpperCase() === 'YES';
+    } catch (error) {
+      console.error("Error determining password relation:", error);
+      // Conservative approach: if uncertain, check for common terms
+      const lowerMessage = message.toLowerCase();
+      return lowerMessage.includes('password') ||
+             lowerMessage.includes('forgot') ||
+             lowerMessage.includes('reset') ||
+             lowerMessage.includes('change');
+    }
   },
 
   /**
