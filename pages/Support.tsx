@@ -86,7 +86,7 @@ const Support: React.FC<Props> = ({ user }) => {
 
       if (requiresVerification) {
         // Generate verification request
-        const verificationMessage = customerCareAI.generateVerificationRequest(lastUserText);
+        const verificationMessage = await customerCareAI.generateVerificationRequest(lastUserText);
         aiResponse = { text: verificationMessage };
       } else {
         // Prepare personalized context for the AI

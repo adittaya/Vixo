@@ -117,15 +117,16 @@ User's message: ${normalizedMessage}`;
       return getResponseInUserLanguage(message, sentimentAdjustedResponse);
     } catch (error) {
       console.error("Pollinations API error:", error);
-      // More specific error handling to avoid generic fallback
-      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-        return "There seems to be an issue with the AI service configuration. Please contact support.";
-      } else if (error.message.includes('429')) {
-        return "The AI service is temporarily busy. Please try again in a moment.";
-      } else if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
-        return "Unable to connect to the AI service. Please check your internet connection.";
-      } else {
-        // Generic fallback - this should be rare now
+      // Generate a dynamic error response using the AI
+      const errorPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+There was an issue processing the user's request. Generate a helpful, empathetic response that acknowledges the issue and suggests trying again. Keep the response friendly and professional, in Hinglish as appropriate for Indian customers.`;
+
+      try {
+        const response = await pollinationsService.queryText(errorPrompt);
+        return response;
+      } catch (fallbackError) {
+        // Ultimate fallback if even the AI call fails
         return "I'm here, but things are a bit busy right now. Please try again in a moment.";
       }
     }
@@ -191,37 +192,23 @@ User's message: ${normalizedMessage}`;
    * @param message - The user's inquiry message
    * @returns Verification instructions
    */
-  generateVerificationRequest(message: string): string {
-    const verificationTypes = {
-      withdrawal: {
-        keywords: ['withdraw', 'withdrawal', 'money transfer'],
-        requirements: ['Government ID', 'Bank statement', 'Selfie with ID']
-      },
-      identity: {
-        keywords: ['identity', 'verification', 'personal info'],
-        requirements: ['Government ID', 'Address proof', 'Phone verification']
-      },
-      security: {
-        keywords: ['security', 'password', 'account access'],
-        requirements: ['Registered mobile number', 'Account details', 'Proof of identity']
-      }
-    };
+  async generateVerificationRequest(message: string): Promise<string> {
+    const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
-    // Determine verification type based on message
-    let verificationType = 'general';
-    for (const [type, data] of Object.entries(verificationTypes)) {
-      if (data.keywords.some(keyword => message.toLowerCase().includes(keyword))) {
-        verificationType = type;
-        break;
-      }
+The user has made a request that requires verification: "${message}"
+
+Generate a helpful, friendly response that explains why verification is needed for security purposes, what specific information is required, and how the process will work. Keep the response professional and in Hinglish as appropriate for Indian customers. Emphasize that security is the top priority and that the verification is to protect their account.`;
+
+    try {
+      const response = await pollinationsService.queryText(prompt);
+      return response;
+    } catch (error) {
+      console.error("Error generating verification request:", error);
+      // Fallback to a more generic response if AI call fails
+      return `For this request, verification is required for security purposes. Please provide the following:\n\n` +
+             `• Valid identification\n• Additional verification\n\n` +
+             `Once verified, I can assist you directly. Your security is our top priority.`;
     }
-
-    const requirements = verificationTypes[verificationType as keyof typeof verificationTypes]?.requirements ||
-                         ['Valid identification', 'Additional verification'];
-
-    return `For this request, verification is required for security purposes. Please provide the following:\n\n` +
-           `• ${requirements.join('\n• ')}\n\n` +
-           `Once verified, I can assist you directly. Your security is our top priority.`;
   },
 
   /**
@@ -280,22 +267,41 @@ Keep the response friendly, professional, and in Hinglish as appropriate for Ind
    * @param user - The user object
    * @returns Available admin actions
    */
-  getAdminOptions(user: any): string[] {
+  async getAdminOptions(user: any): Promise<string[]> {
     if (!this.isAdmin(user)) {
       return [];
     }
 
-    return [
-      'View user account details',
-      'Reset user password',
-      'Approve withdrawal requests',
-      'Update account status',
-      'Process refunds',
-      'Manage VIP levels',
-      'Review transaction history',
-      'Suspend accounts',
-      'Generate reports'
-    ];
+    const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+Generate a list of admin panel options that are available for customer care representatives. These should be actions that can be performed to assist users. Return the options as a numbered list. Options should include things like viewing account details, processing requests, managing user status, etc.`;
+
+    try {
+      const response = await pollinationsService.queryText(prompt);
+      // Parse the response into an array of options
+      const lines = response.split('\n').filter(line =>
+        line.trim() && (line.startsWith('1.') || line.startsWith('2.') || line.startsWith('3.') ||
+        line.startsWith('4.') || line.startsWith('5.') || line.startsWith('6.') ||
+        line.match(/^\d+\.\s+/))
+      );
+
+      // Clean up the lines to extract just the option text
+      return lines.map(line => line.replace(/^\d+\.\s*/, '').trim()).filter(option => option);
+    } catch (error) {
+      console.error("Error generating admin options:", error);
+      // Fallback to a basic list if AI call fails
+      return [
+        'View user account details',
+        'Reset user password',
+        'Approve withdrawal requests',
+        'Update account status',
+        'Process refunds',
+        'Manage VIP levels',
+        'Review transaction history',
+        'Suspend accounts',
+        'Generate reports'
+      ];
+    }
   },
 
   /**
