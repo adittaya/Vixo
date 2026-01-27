@@ -1,15 +1,11 @@
 import { chatAI } from './chatAI';
 import { imageAnalysisAI } from './imageAnalysisAI';
 import { generateImageDescription, parseImageContent, ImageAnalysisResult } from '../utils/imageParser';
-
-// State management for the router
-let currentMode: 'chat' | 'image' = 'chat';
-let isBusy = false;
-let lastImageContext: any = null;
+import { requestManager, generateRequestId } from '../utils/requestManager';
 
 /**
  * Router / Controller for Customer Care AI
- * Implements the all-in-one permanent solution
+ * Implements the ultimate fail-safe stateless solution
  */
 export const customerCareRouter = {
   /**
@@ -19,67 +15,45 @@ export const customerCareRouter = {
    * @returns The complete AI response
    */
   async processRequest(message: string, imageData?: string, imageDescription?: string): Promise<string> {
-    // Check if router is busy
-    if (isBusy) {
-      return "Please wait a moment. I'm here to help.";
-    }
+    // Generate a unique request ID for this message
+    const requestId = generateRequestId();
 
-    if (imageData && imageDescription) {
-      // Set busy flag and mode
-      isBusy = true;
-      currentMode = 'image';
+    // HARD KILL SWITCH: Cancel all pending requests
+    requestManager.cancelAllRequests();
 
-      let imageResult: string;
-      try {
-        // Run image agent with timeout protection
-        imageResult = await this.runWithTimeout(
+    // Add this request to the pending list
+    const controller = requestManager.addRequest(requestId);
+
+    try {
+      // Check if this message contains an image
+      if (imageData && imageDescription) {
+        // Run image agent ONLY
+        const imageResult = await this.runWithTimeoutAndAbort(
           imageAnalysisAI.analyzeImage(imageDescription, imageData),
           3000, // 3 seconds timeout
-          "Image analysis timed out. Please try again."
+          "Image analysis timed out. Please try again.",
+          controller.signal
         );
 
-        // Save image result for context
-        lastImageContext = imageResult;
-      } catch (error) {
-        console.error("Error in image analysis agent:", error);
-        imageResult = "Support is busy right now. Please try again.";
-        lastImageContext = imageResult;
-      } finally {
-        // ALWAYS reset to chat mode and clear busy flag
-        currentMode = 'chat';
-        isBusy = false;
-      }
-
-      // Return immediate response after image processing
-      return "Image received and checked.";
-    } else {
-      // Set busy flag for chat processing
-      isBusy = true;
-
-      let response: string;
-      try {
-        // Go directly to CHAT AGENT (no shared promises, no blocking)
-        // Include any previous image context if available
-        let fullMessage = message;
-        if (lastImageContext) {
-          fullMessage = `${message}\n\nPrevious Image Context: ${lastImageContext}`;
-        }
-
-        // Run chat agent with timeout protection
-        response = await this.runWithTimeout(
-          chatAI.getResponse(fullMessage),
+        // Return immediate response after image processing
+        return "Image received and checked.";
+      } else {
+        // Run chat agent ONLY
+        const response = await this.runWithTimeoutAndAbort(
+          chatAI.getResponse(message),
           3000, // 3 seconds timeout
-          "Support is busy right now. Please try again."
+          "Support is busy right now. Please try again.",
+          controller.signal
         );
-      } catch (error) {
-        console.error("Error in chat agent during text processing:", error);
-        response = "Support is busy right now. Please try again.";
-      } finally {
-        // ALWAYS clear busy flag
-        isBusy = false;
-      }
 
-      return response;
+        return response;
+      }
+    } catch (error) {
+      console.error("Error in processRequest:", error);
+      return "Please try again. I'm here to help.";
+    } finally {
+      // Remove the request from pending list
+      requestManager.removeRequest(requestId);
     }
   },
 
@@ -90,82 +64,82 @@ export const customerCareRouter = {
    * @returns The AI response based on image analysis
    */
   async processImageRequest(description: string, imageData: string): Promise<string> {
-    // Check if router is busy
-    if (isBusy) {
-      return "Please wait a moment. I'm here to help.";
-    }
+    // Generate a unique request ID for this message
+    const requestId = generateRequestId();
 
-    // Set busy flag and mode
-    isBusy = true;
-    currentMode = 'image';
+    // HARD KILL SWITCH: Cancel all pending requests
+    requestManager.cancelAllRequests();
 
-    let imageResult: string;
+    // Add this request to the pending list
+    const controller = requestManager.addRequest(requestId);
+
     try {
-      // Run image agent with timeout protection
-      imageResult = await this.runWithTimeout(
+      // Run image agent ONLY
+      const imageResult = await this.runWithTimeoutAndAbort(
         imageAnalysisAI.analyzeImage(description, imageData),
         3000, // 3 seconds timeout
-        "Image analysis timed out. Please try again."
+        "Image analysis timed out. Please try again.",
+        controller.signal
       );
 
-      // Save image result for context
-      lastImageContext = imageResult;
+      return imageResult;
     } catch (error) {
-      console.error("Error in image analysis agent:", error);
-      imageResult = "Support is busy right now. Please try again.";
-      lastImageContext = imageResult;
+      console.error("Error in processImageRequest:", error);
+      return "Please try again. I'm here to help.";
     } finally {
-      // ALWAYS reset to chat mode and clear busy flag
-      currentMode = 'chat';
-      isBusy = false;
+      // Remove the request from pending list
+      requestManager.removeRequest(requestId);
     }
-
-    // Return the image analysis result
-    return imageResult;
   },
 
   /**
-   * Helper function to run a promise with a timeout
+   * Helper function to run a promise with a timeout and abort signal
    */
-  async runWithTimeout<T>(promise: Promise<T>, timeoutMs: number, fallbackValue: T): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        setTimeout(() => reject(new Error('Operation timed out')), timeoutMs);
-      }) as Promise<T>
-    ]).catch(() => {
-      // If the operation timed out, return the fallback value
+  async runWithTimeoutAndAbort<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    fallbackValue: T,
+    signal?: AbortSignal
+  ): Promise<T> {
+    // Create a timeout promise
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error('Operation timed out'));
+      }, timeoutMs);
+
+      // If the signal is aborted, reject the promise
+      if (signal) {
+        signal.addEventListener('abort', () => {
+          clearTimeout(timeoutId);
+          reject(new Error('Operation was aborted'));
+        });
+      }
+    }) as Promise<T>;
+
+    try {
+      // Race the actual promise against the timeout and abort signal
+      const result = await Promise.race([promise, timeoutPromise]);
+      return result;
+    } catch (error) {
+      // If the operation timed out or was aborted, return the fallback value
+      console.warn("Request timed out or was aborted:", error);
       return fallbackValue;
-    });
+    }
   },
 
   /**
-   * Reset the router state to default
+   * Reset the router (not needed in stateless architecture, but kept for compatibility)
    */
   resetState(): void {
-    currentMode = 'chat';
-    isBusy = false;
-    lastImageContext = null;
+    // Cancel all pending requests
+    requestManager.cancelAllRequests();
   },
 
   /**
-   * Get the current mode
+   * Get the number of pending requests (for monitoring)
    */
-  getCurrentMode(): 'chat' | 'image' {
-    return currentMode;
-  },
-
-  /**
-   * Get the busy status
-   */
-  getIsBusy(): boolean {
-    return isBusy;
-  },
-
-  /**
-   * Get the last image context
-   */
-  getLastImageContext(): any {
-    return lastImageContext;
+  getPendingRequestCount(): number {
+    // This is just for monitoring; in a stateless system we don't rely on this
+    return 0; // We don't track state, so always return 0
   }
 };

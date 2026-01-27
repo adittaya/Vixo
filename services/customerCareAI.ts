@@ -2,7 +2,7 @@ import { customerCareRouter } from './customerCareRouter';
 
 /**
  * Customer Care AI Service
- * Uses the all-in-one permanent solution router architecture
+ * Uses the ultimate fail-safe stateless router architecture
  */
 export const customerCareAI = {
   /**
@@ -11,8 +11,8 @@ export const customerCareAI = {
    * @returns The complete AI response
    */
   async getResponse(message: string): Promise<string> {
-    // Use the router for text-based interactions
-    // No image data provided, so goes directly to chat agent
+    // Use the stateless router for text-based interactions
+    // Each message is processed from scratch with no memory
     return await customerCareRouter.processRequest(message);
   },
 
@@ -23,8 +23,8 @@ export const customerCareAI = {
    * @returns The complete AI response with image analysis
    */
   async analyzeImage(description: string, imageUrl: string): Promise<string> {
-    // Use the router for image-based interactions
-    // This will run image agent once, then return control
+    // Use the stateless router for image-based interactions
+    // Each image request is processed from scratch with no memory
     return await customerCareRouter.processImageRequest(description, imageUrl);
   },
 
@@ -36,16 +36,9 @@ export const customerCareAI = {
   },
 
   /**
-   * Get the router's busy status
+   * Get the number of pending requests (for monitoring)
    */
-  getIsBusy(): boolean {
-    return customerCareRouter.getIsBusy();
-  },
-
-  /**
-   * Get the router's current mode
-   */
-  getCurrentMode(): 'chat' | 'image' {
-    return customerCareRouter.getCurrentMode();
+  getPendingRequestCount(): number {
+    return customerCareRouter.getPendingRequestCount();
   }
 };
