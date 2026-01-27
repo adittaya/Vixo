@@ -26,7 +26,17 @@ export const customerCareAI = {
       return response;
     } catch (error) {
       console.error("Pollinations API error:", error);
-      return "I'm here, but things are a bit busy right now. Please try again in a moment.";
+      // More specific error handling to avoid generic fallback
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        return "There seems to be an issue with the AI service configuration. Please contact support.";
+      } else if (error.message.includes('429')) {
+        return "The AI service is temporarily busy. Please try again in a moment.";
+      } else if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
+        return "Unable to connect to the AI service. Please check your internet connection.";
+      } else {
+        // Generic fallback - this should be rare now
+        return "I'm here, but things are a bit busy right now. Please try again in a moment.";
+      }
     }
   },
 

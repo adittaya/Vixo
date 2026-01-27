@@ -12,9 +12,10 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.POLLINATIONS_API_KEY': JSON.stringify(env.POLLINATIONS_API_KEY || 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'),
+        'process.env.POLLINATIONS_API_KEY': JSON.stringify(env.POLLINATIONS_API_KEY),
         'process.env.API_KEY': JSON.stringify(env.API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        'import.meta.env.VITE_POLLINATIONS_API_KEY': JSON.stringify(env.VITE_POLLINATIONS_API_KEY || env.POLLINATIONS_API_KEY)
       },
       envPrefix: ['VITE_', 'POLLINATIONS_', 'GEMINI_'], // Expose these prefixes to client-side
       resolve: {

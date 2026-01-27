@@ -114,7 +114,7 @@ export const customAIAgent = {
         // Use Pollinations service for customer care queries
         const response = await this.runWithTimeoutAndAbort(
           pollinationsService.queryText(enhancedPrompt),
-          5000, // 5 seconds timeout for more complex queries
+          8000, // Increased timeout for more complex queries
           "I'm here, but things are a bit busy right now. Please try again in a moment.",
           controller.signal
         );
@@ -124,7 +124,7 @@ export const customAIAgent = {
         // Use Pollinations service for general queries
         const response = await this.runWithTimeoutAndAbort(
           pollinationsService.queryText(text),
-          3000, // 3 seconds timeout
+          5000, // Increased timeout for general queries
           "I'm here, but things are a bit busy right now. Please try again in a moment.",
           controller.signal
         );
@@ -133,7 +133,17 @@ export const customAIAgent = {
       }
     } catch (error) {
       console.error("Text chat failed:", error);
-      return "I'm here, but things are a bit busy right now. Please try again in a moment.";
+      // More specific error handling to avoid generic fallback
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        return "There seems to be an issue with the AI service configuration. Please contact support.";
+      } else if (error.message.includes('429')) {
+        return "The AI service is temporarily busy. Please try again in a moment.";
+      } else if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
+        return "Unable to connect to the AI service. Please check your internet connection.";
+      } else {
+        // Generic fallback - this should be rare now
+        return "I'm here, but things are a bit busy right now. Please try again in a moment.";
+      }
     }
   },
 

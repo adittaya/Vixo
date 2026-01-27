@@ -32,10 +32,15 @@ export const pollinationsService = {
    */
   async queryText(prompt: string): Promise<string> {
     try {
-      // Query the Pollinations text endpoint
-      // Format: https://gen.pollinations.ai/text/{PROMPT}
+      // Query the Pollinations text endpoint with API key
+      // Format: https://gen.pollinations.ai/text/{PROMPT}?key={KEY}
       const encodedPrompt = encodeURIComponent(prompt);
-      const response = await fetch(`https://gen.pollinations.ai/text/${encodedPrompt}`, {
+      const apiKey = process.env.POLLINATIONS_API_KEY || import.meta.env.VITE_POLLINATIONS_API_KEY;
+      const url = apiKey
+        ? `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`
+        : `https://gen.pollinations.ai/text/${encodedPrompt}`;
+
+      const response = await fetch(url, {
         headers: {
           'Accept': 'text/plain',
         }
