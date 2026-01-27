@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, SupportMessage, Transaction, AuditLog } from '../types';
 import { getStore, saveStore } from '../store';
 import { customerCareAI } from '../services/customerCareAI';
+import { imageAnalysisAI } from '../services/imageAnalysisAI';
 import { Send, Camera, ChevronLeft, RefreshCw, X, ArrowRight, User as UserIcon, Headphones, CheckCircle2, Bot, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
@@ -170,6 +171,9 @@ const Support: React.FC<Props> = ({ user }) => {
     setIsSending(true); // Show loading state during submission
 
     try {
+      // First, analyze the image with the AI
+      const aiResponse = await imageAnalysisAI.analyzeImage(imageDescription, selectedImage);
+
       // Create image request message that goes to admin panel (but not to chat history)
       const imageRequestMessage: SupportMessage = {
         id: `imgreq-${Date.now()}`,
@@ -184,12 +188,12 @@ const Support: React.FC<Props> = ({ user }) => {
       const store = getStore();
       const updatedStoreMessages = [...(store.supportMessages || []), imageRequestMessage];
 
-      // Also save a feedback message to the global store
+      // Also save a feedback message to the global store with AI analysis
       const feedbackMessage: SupportMessage = {
         id: `feedback-${Date.now()}`,
         userId: user.id,
         sender: 'admin',
-        text: "Your image request has been submitted to the admin panel. An admin will review it shortly.",
+        text: aiResponse || "Your image request has been submitted to the admin panel. An admin will review it shortly.",
         timestamp: Date.now()
       };
 
