@@ -15,7 +15,8 @@ app.post("/api/ai/text", async (req, res) => {
     const { prompt } = req.body;
     if (!prompt) return res.status(400).json({ error: "prompt required" });
 
-    const url = `${BASE}/text/${encodeURIComponent(prompt)}?key=${KEY}`;
+    const encodedPrompt = encodeURIComponent(prompt);
+    const url = `${BASE}/text/${encodedPrompt}?key=${KEY}`;
     const r = await fetch(url);
     const text = await r.text();
 
