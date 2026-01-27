@@ -1,10 +1,9 @@
 /**
- * Comprehensive list of OpenRouter free models
- * Updated to include the most reliable free models
+ * OpenRouter free models as specified in the system prompt
  */
 
 export const FREE_MODEL_LISTS = {
-  // Best free models for text-based conversations
+  // TEXT_MODELS as specified
   TEXT_MODELS: [
     "google/gemma-2-9b-it:free",
     "google/gemma-2-27b-it:free",
@@ -28,17 +27,17 @@ export const FREE_MODEL_LISTS = {
     "lizpreciatior/ngc-megatron-gpt3-175b:free"
   ],
 
-  // Models with vision/image capabilities (limited free options)
+  // VISION_MODELS as specified
   VISION_MODELS: [
-    "google/gemini-pro-vision:free",  // Note: May have limited availability
-    "google/gemini-2.0-flash-exp:free",  // Experimental, may have vision capabilities
-    "microsoft/phi-3-vision-128k-instruct:free",  // Vision-enabled
-    "llava-hf/llava-1.5-7b-hf:free",  // Vision-language model
-    "llava-hf/llava-1.5-13b-hf:free",  // Higher capacity vision model
-    "llava-hf/bakllava-1-hf:free"  // Alternative vision model
+    "google/gemini-pro-vision:free",
+    "google/gemini-2.0-flash-exp:free",
+    "microsoft/phi-3-vision-128k-instruct:free",
+    "llava-hf/llava-1.5-7b-hf:free",
+    "llava-hf/llava-1.5-13b-hf:free",
+    "llava-hf/bakllava-1-hf:free"
   ],
 
-  // High-performance free models
+  // HIGH_PERFORMANCE_MODELS as specified
   HIGH_PERFORMANCE: [
     "meta-llama/llama-3.1-70b-instruct:free",
     "mistralai/mistral-large:free",
@@ -52,7 +51,7 @@ export const FREE_MODEL_LISTS = {
     "openchat/openchat-7b:free"
   ],
 
-  // Reliable fallback models
+  // FALLBACK_MODELS as specified
   FALLBACK_MODELS: [
     "google/gemma-2-9b-it:free",
     "microsoft/phi-3-mini-128k-instruct:free",
