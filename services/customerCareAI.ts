@@ -24,5 +24,12 @@ export const customerCareAI = {
   async analyzeImage(description: string, imageUrl: string): Promise<string> {
     // Use the router for image-based interactions
     return await customerCareRouter.processImageRequest(description, imageUrl);
+  },
+
+  /**
+   * Reset the router state to default
+   */
+  resetState(): void {
+    customerCareRouter.resetState();
   }
 };
