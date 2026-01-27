@@ -78,15 +78,31 @@ const loadLocalBackup = () => {
   return null;
 };
 
+// Helper function to create a timeout promise
+function timeout(ms: number) {
+  return new Promise((_, reject) => setTimeout(() => reject(new Error('Operation timed out')), ms));
+}
+
 export const initCloudStore = async () => {
   try {
-    const { data, error } = await supabase
+    // Create a race between the Supabase call and a timeout
+    const supabaseCall = supabase
       .from('platform_data')
       .select('state')
       .eq('id', PLATFORM_ROW_ID)
       .maybeSingle();
 
+    // Race the Supabase call with a 10-second timeout
+    const result = await Promise.race([
+      supabaseCall,
+      timeout(10000)
+    ]) as any;
+
+    // If we reach here, the timeout didn't happen
+    const { data, error } = result;
+
     if (error) {
+      console.warn("Supabase fetch error:", error);
       isCloudAvailable = false;
       cloudState = loadLocalBackup() || { users: [], purchases: [], transactions: [], admin: defaultAdmin, logs: [], communityPosts: [], supportMessages: [] };
       return true;
@@ -100,14 +116,22 @@ export const initCloudStore = async () => {
     } else {
       cloudState = loadLocalBackup() || { users: [], purchases: [], transactions: [], admin: defaultAdmin, logs: [], communityPosts: [], supportMessages: [] };
       if (isCloudAvailable) {
-        await supabase.from('platform_data').upsert({ id: PLATFORM_ROW_ID, state: cloudState });
+        try {
+          await supabase.from('platform_data').upsert({ id: PLATFORM_ROW_ID, state: cloudState });
+        } catch (upsertError) {
+          console.warn("Failed to upsert platform data:", upsertError);
+          isCloudAvailable = false;
+        }
       }
     }
     window.dispatchEvent(new Event('store-update'));
     return true;
   } catch (err) {
+    console.error("Critical error in initCloudStore:", err);
+    // If there's a timeout or other error, use local backup
     isCloudAvailable = false;
     cloudState = loadLocalBackup() || { users: [], purchases: [], transactions: [], admin: defaultAdmin, logs: [], communityPosts: [], supportMessages: [] };
+    window.dispatchEvent(new Event('store-update'));
     return true;
   }
 };
