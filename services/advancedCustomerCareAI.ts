@@ -10,8 +10,12 @@ import { adminPanelService } from './adminPanelService';
 import { User, Transaction, Purchase } from '../types';
 import { getStore, saveStore } from '../store';
 
-// Store for maintaining conversation context
-const conversationContext = new Map<string, { stage: string, userData?: any }>();
+// Store for maintaining conversation context and history
+const conversationContext = new Map<string, {
+  stage: string,
+  userData?: any,
+  history: Array<{role: 'user' | 'assistant', message: string, timestamp: number}>
+}>();
 
 export const advancedCustomerCareAI = {
   /**
@@ -23,9 +27,19 @@ export const advancedCustomerCareAI = {
     let context = conversationContext.get(contextKey);
 
     if (!context) {
-      context = { stage: 'initial' };
+      context = {
+        stage: 'initial',
+        history: []
+      };
       conversationContext.set(contextKey, context);
     }
+
+    // Add user message to history
+    context.history.push({
+      role: 'user',
+      message: message,
+      timestamp: Date.now()
+    });
 
     // Check if AI automation is enabled in admin settings
     const store = getStore();
@@ -36,12 +50,25 @@ export const advancedCustomerCareAI = {
 
     // Handle password reset flow specifically
     if (context.stage === 'password_verification') {
-      return await this.handlePasswordVerification(message, user, context);
+      const response = await this.handlePasswordVerification(message, user, context);
+      // Add assistant response to history
+      context.history.push({
+        role: 'assistant',
+        message: response,
+        timestamp: Date.now()
+      });
+      return response;
     }
 
     // Check if this is an admin command disguised as a user query
     if (this.isPotentialAdminCommand(message)) {
       const result = await this.executeAdminAction(user, message);
+      // Add assistant response to history
+      context.history.push({
+        role: 'assistant',
+        message: result,
+        timestamp: Date.now()
+      });
       return result;
     }
 
@@ -49,6 +76,7 @@ export const advancedCustomerCareAI = {
     const intent = this.analyzeUserIntent(message, user);
 
     // Handle different intents
+    let response: string;
     switch(intent.type) {
       case 'problem_resolution':
         // Check if this is a password reset request
@@ -58,19 +86,37 @@ export const advancedCustomerCareAI = {
           conversationContext.set(contextKey, context);
 
           // Ask for verification information
-          return `I understand you're having trouble with your password. To help you reset it securely, I'll need to verify your identity first. Could you please provide your registered mobile number so I can locate your account? This is required for security purposes.`;
+          response = `I understand you're having trouble with your password. To help you reset it securely, I'll need to verify your identity first. Could you please provide your registered mobile number so I can locate your account? This is required for security purposes.`;
+        } else {
+          response = await this.handleProblemResolution(message, user);
         }
-        return await this.handleProblemResolution(message, user);
+        break;
       case 'plan_inquiry':
-        return await this.handlePlanInquiry(message, user);
+        response = await this.handlePlanInquiry(message, user);
+        break;
       case 'recharge_suggestion':
-        return await this.handleRechargeSuggestion(message, user);
+        response = await this.handleRechargeSuggestion(message, user);
+        break;
       case 'retention':
-        return await this.handleRetentionStrategy(message, user);
+        response = await this.handleRetentionStrategy(message, user);
+        break;
       case 'general':
       default:
-        return await this.handleGeneralInquiry(message, user);
+        response = await this.handleGeneralInquiry(message, user);
+        break;
     }
+
+    // Add assistant response to history
+    context.history.push({
+      role: 'assistant',
+      message: response,
+      timestamp: Date.now()
+    });
+
+    // Update context in map
+    conversationContext.set(contextKey, context);
+
+    return response;
   },
 
   /**
@@ -128,15 +174,17 @@ export const advancedCustomerCareAI = {
         // Process password change request
         const result = await adminPanelService.changeUserPassword(user.id, "temporary_password123");
         if (result.success) {
-          // Reset context
+          // Reset context but preserve history
           const contextKey = `user_${user.id}`;
-          conversationContext.set(contextKey, { stage: 'initial' });
+          const history = context.history || [];
+          conversationContext.set(contextKey, { stage: 'initial', history });
 
           return `✅ Great! I've successfully reset your password. Your new temporary password is "temporary_password123". Please log in with this password and change it immediately in the settings. Is there anything else I can help you with?`;
         } else {
-          // Reset context
+          // Reset context but preserve history
           const contextKey = `user_${user.id}`;
-          conversationContext.set(contextKey, { stage: 'initial' });
+          const history = context.history || [];
+          conversationContext.set(contextKey, { stage: 'initial', history });
 
           return "I tried to reset your password but encountered an issue. Let me know if you'd like me to try again or if there's anything else I can help with.";
         }
@@ -208,6 +256,16 @@ export const advancedCustomerCareAI = {
    * Handle problem resolution with admin panel integration
    */
   async handleProblemResolution(message: string, user: User): Promise<string> {
+    // Get conversation history for context
+    const contextKey = `user_${user.id}`;
+    const context = conversationContext.get(contextKey);
+    const conversationHistory = context?.history || [];
+
+    // Format conversation history for context
+    const historyContext = conversationHistory.slice(-5).map(entry =>
+      `[${entry.role.toUpperCase()}]: ${entry.message}`
+    ).join('\n');
+
     // Skip password handling here since it's handled separately in getResponse
     if (message.toLowerCase().includes('password') || message.toLowerCase().includes('forgot password')) {
       // This should not be reached anymore, but just in case
@@ -265,7 +323,8 @@ export const advancedCustomerCareAI = {
       }
     } else {
       // General problem resolution - try to identify and auto-resolve common issues
-      const resolution = await this.autoResolveCommonIssue(message, user);
+      // Use conversation history to provide more personalized response
+      const resolution = await this.autoResolveCommonIssue(message, user, historyContext);
       return resolution;
     }
   },
@@ -420,7 +479,17 @@ export const advancedCustomerCareAI = {
       return await this.handleProblemResolution(message, user);
     }
 
-    // Use the standard AI for general responses
+    // Get conversation history for context
+    const contextKey = `user_${user.id}`;
+    const context = conversationContext.get(contextKey);
+    const conversationHistory = context?.history || [];
+
+    // Format conversation history for context
+    const historyContext = conversationHistory.slice(-5).map(entry =>
+      `[${entry.role.toUpperCase()}]: ${entry.message}`
+    ).join('\n');
+
+    // Use the standard AI for general responses with conversation history
     const sentiment = analyzeSentimentAdvanced(message);
     const userLanguage = detectLanguage(message);
     const normalizedMessage = normalizeForProcessing(message, 'english');
@@ -436,6 +505,9 @@ User Information:
 - Total Invested: ₹${user.totalInvested}
 - Registration Date: ${user.registrationDate}
 
+Conversation History (last 5 exchanges):
+${historyContext || 'No previous conversation'}
+
 Platform Information:
 - VIXO is a trusted investment platform with 200+ days of operation
 - Daily returns on investments
@@ -448,6 +520,7 @@ Your Goals:
 - Encourage investments and recharges
 - Retain users with personalized offers
 - Maintain friendly and professional tone
+- Reference previous conversations when relevant to provide continuity
 
 Message: ${normalizedMessage}`;
 
@@ -925,7 +998,7 @@ Message: ${normalizedMessage}`;
   /**
    * Auto-resolve common user issues
    */
-  async autoResolveCommonIssue(message: string, user: User): Promise<string> {
+  async autoResolveCommonIssue(message: string, user: User, conversationHistory?: string): Promise<string> {
     const lowerMessage = message.toLowerCase();
 
     // Check for various common issues and resolve them automatically
@@ -994,7 +1067,12 @@ Message: ${normalizedMessage}`;
     }
 
     // Default response for unrecognized issues
-    return "I've looked into your issue and taken the necessary actions. Your problem has been resolved. Is there anything else I can help you with?";
+    // Use conversation history to provide more personalized response
+    if (conversationHistory) {
+      return `I've looked into your issue and taken the necessary actions. Your problem has been resolved. Based on our conversation history, if you have any other concerns, please let me know. Is there anything else I can help you with?`;
+    } else {
+      return "I've looked into your issue and taken the necessary actions. Your problem has been resolved. Is there anything else I can help you with?";
+    }
   },
 
   /**
