@@ -36,7 +36,12 @@ export const pollinationsService = {
       // In Node.js environment, we can call the API directly
       if (typeof window !== 'undefined') {
         // Browser environment - use local server endpoint
-        const response = await fetch('/api/ai/text', {
+        // Make sure to use the correct server URL (port 3000 for the extended server)
+        const serverUrl = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development'
+          ? 'http://localhost:3000'
+          : '';
+
+        const response = await fetch(`${serverUrl}/api/ai/text`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -45,7 +50,17 @@ export const pollinationsService = {
         });
 
         if (!response.ok) {
-          throw new Error(`Server responded with status ${response.status}`);
+          // Try to get error details from response
+          let errorMessage = `Server responded with status ${response.status}`;
+          try {
+            const errorData = await response.json();
+            if (errorData.error) {
+              errorMessage += ` - ${errorData.error}`;
+            }
+          } catch (e) {
+            // If we can't parse the error response, use the status only
+          }
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
