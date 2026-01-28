@@ -53,6 +53,7 @@ app.post("/api/ai/text", async (req, res) => {
       res.json({ text });
     }
   } catch (e) {
+    console.error("API error:", e);
     res.status(500).json({ error: "AI busy, try again" });
   }
 });
