@@ -54,15 +54,45 @@ const BASE = "https://gen.pollinations.ai";
 
 app.post("/api/ai/text", async (req, res) => {
   try {
-    const { prompt } = req.body;
-    if (!prompt) return res.status(400).json({ error: "prompt required" });
+    const { prompt, messages, model, temperature, presence_penalty, frequency_penalty, max_tokens } = req.body;
 
-    const encodedPrompt = encodeURIComponent(prompt);
-    const url = `${BASE}/text/${encodedPrompt}?key=${KEY}`;
-    const r = await fetch(url);
-    const text = await r.text();
+    // If messages are provided (chat format), use the chat completions endpoint
+    if (messages && Array.isArray(messages)) {
+      const requestBody = {
+        model: model || "openai",
+        temperature: temperature !== undefined ? temperature : 0.2,
+        presence_penalty: presence_penalty !== undefined ? presence_penalty : 0.6,
+        frequency_penalty: frequency_penalty !== undefined ? frequency_penalty : 0.6,
+        max_tokens: max_tokens || 500,
+        messages: messages
+      };
 
-    res.json({ text });
+      const url = `${BASE}/v1/chat/completions?key=${KEY}`;
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!r.ok) {
+        throw new Error(`API responded with status ${r.status}`);
+      }
+
+      const data = await r.json();
+      res.json({ text: data.choices[0].message.content });
+    } else {
+      // Fallback to simple text endpoint if only prompt is provided
+      if (!prompt) return res.status(400).json({ error: "prompt or messages required" });
+
+      const encodedPrompt = encodeURIComponent(prompt);
+      const url = `${BASE}/text/${encodedPrompt}?key=${KEY}`;
+      const r = await fetch(url);
+      const text = await r.text();
+
+      res.json({ text });
+    }
   } catch (e) {
     res.status(500).json({ error: "AI busy, try again" });
   }

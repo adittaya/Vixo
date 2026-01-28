@@ -30,13 +30,18 @@ export const pollinationsService = {
    * @param prompt - The text query
    * @returns The text response
    */
-  async queryText(prompt: string): Promise<string> {
+  /**
+   * Query Pollinations chat completions endpoint with full conversation history
+   * @param messages - Array of conversation messages with role and content
+   * @returns The text response
+   */
+  async queryChat(messages: Array<{role: 'system' | 'user' | 'assistant', content: string}>): Promise<string> {
     // Multiple fallback approach for API connectivity
-    console.log("Attempting to call Pollinations API with prompt:", prompt.substring(0, 50) + "...");
+    console.log("Attempting to call Pollinations API with conversation history:", messages.length, "messages");
 
     // Method 1: Try local server endpoint (for development and properly deployed apps)
     if (typeof window !== 'undefined') {
-      console.log("Running in browser environment, attempting to call /api/ai/text");
+      console.log("Running in browser environment, attempting to call /api/ai/text with chat format");
 
       try {
         const controller = new AbortController();
@@ -47,7 +52,14 @@ export const pollinationsService = {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ prompt }),
+          body: JSON.stringify({
+            messages,
+            model: "openai",
+            temperature: 0.2,
+            presence_penalty: 0.6,
+            frequency_penalty: 0.6,
+            max_tokens: 500
+          }),
           signal: controller.signal
         });
 
@@ -58,7 +70,7 @@ export const pollinationsService = {
         if (response.ok) {
           const data = await response.json();
           console.log("Successfully received response from local server");
-          return data.text;
+          return data.text || data.choices?.[0]?.message?.content;
         } else {
           // Local server responded but with an error
           let errorMessage = `Local server responded with status ${response.status}`;
@@ -82,20 +94,30 @@ export const pollinationsService = {
       }
     }
 
-    // Method 2: Try direct API call (may fail due to CORS in browsers, but works in Node.js)
-    console.log("Attempting direct API call to external service");
-    const encodedPrompt = encodeURIComponent(prompt);
+    // Method 2: Try direct API call using the proper chat completions endpoint (may fail due to CORS in browsers, but works in Node.js)
+    console.log("Attempting direct API call to external service using chat completions endpoint");
     const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
-    const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
+    const url = `https://gen.pollinations.ai/v1/chat/completions?key=${apiKey}`;
 
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
+      const requestBody = {
+        model: "openai",
+        temperature: 0.2,
+        presence_penalty: 0.6,
+        frequency_penalty: 0.6,
+        max_tokens: 500,
+        messages: messages
+      };
+
       const response = await fetch(url, {
+        method: 'POST',
         headers: {
-          'Accept': 'text/plain',
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(requestBody),
         signal: controller.signal
       });
 
@@ -114,15 +136,36 @@ export const pollinationsService = {
         }
       }
 
-      const textResponse = await response.text();
+      const responseData = await response.json();
       console.log("Successfully received response from external API");
-      return textResponse;
+      return responseData.choices[0].message.content;
     } catch (directApiError) {
       console.error("Direct API call failed:", directApiError.message);
       // If we're in browser and both methods failed, we propagate the error
       // which will result in "Customer Care busy" as designed
       throw directApiError;
     }
+  },
+
+  /**
+   * Query Pollinations text endpoint (wrapper for backward compatibility)
+   * @param prompt - The text query
+   * @returns The text response
+   */
+  async queryText(prompt: string): Promise<string> {
+    // For backward compatibility, convert the single prompt to a conversation with system message
+    const messages = [
+      {
+        role: 'system' as const,
+        content: 'You are a helpful assistant. Respond to the user\'s query directly and concisely.'
+      },
+      {
+        role: 'user' as const,
+        content: prompt
+      }
+    ];
+
+    return await this.queryChat(messages);
   },
 
   /**

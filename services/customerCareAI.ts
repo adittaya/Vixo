@@ -419,7 +419,27 @@ ${chatHistoryContext}
 User's message: ${normalizedMessage}`;
         }
 
-        const response = await pollinationsService.queryText(prompt);
+        // Convert the prompt to the proper chat format with conversation history
+        // Create the proper message structure for the chat API
+        const messages = [
+          {
+            role: 'system' as const,
+            content: `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+            You are a professional customer support AI. You must remember the entire conversation,
+            deeply understand the user's problem, avoid repeating questions, and provide clear step-by-step solutions.
+            If the issue has already been discussed, continue from there instead of starting over.`
+          },
+          {
+            role: 'user' as const,
+            content: `${userContext}
+
+${chatHistoryContext}
+
+User's message: ${normalizedMessage}`
+          }
+        ];
+
+        const response = await pollinationsService.queryChat(messages);
 
         // Apply sentiment-based adjustments to the response
         const sentimentAdjustedResponse = getSentimentBasedResponse(sentiment, response);
@@ -503,7 +523,21 @@ ${chatHistoryContext}
 Analyze this request and determine if it requires verification for security purposes. Return "YES" if verification is required, or "NO" if it does not require verification. Only respond with "YES" or "NO".`;
 
     try {
-      const response = await pollinationsService.queryText(prompt);
+      // Convert to proper chat format
+      const messages = [
+        {
+          role: 'system' as const,
+          content: `You are a professional customer support AI. You must analyze the user's request and determine if verification is required for security purposes.`
+        },
+        {
+          role: 'user' as const,
+          content: `${chatHistoryContext}
+
+${prompt}`
+        }
+      ];
+
+      const response = await pollinationsService.queryChat(messages);
       return response.trim().toUpperCase() === 'YES';
     } catch (error) {
       console.error("Verification check API error:", error);
@@ -535,7 +569,21 @@ ${chatHistoryContext}
 Generate a helpful, friendly response that explains why verification is needed for security purposes, what specific information is required, and how the process will work. Keep the response professional and in Hinglish as appropriate for Indian customers. Emphasize that security is the top priority and that the verification is to protect their account.`;
 
     try {
-      const response = await pollinationsService.queryText(prompt);
+      // Convert to proper chat format
+      const messages = [
+        {
+          role: 'system' as const,
+          content: `You are a professional customer support AI. Generate a helpful, friendly response that explains why verification is needed for security purposes, what specific information is required, and how the process will work. Keep the response professional and in Hinglish as appropriate for Indian customers. Emphasize that security is the top priority and that the verification is to protect their account.`
+        },
+        {
+          role: 'user' as const,
+          content: `${chatHistoryContext}
+
+${prompt}`
+        }
+      ];
+
+      const response = await pollinationsService.queryChat(messages);
       return response;
     } catch (error) {
       console.error("Verification request API error:", error);
@@ -575,7 +623,21 @@ ${chatHistoryContext}
 Analyze this request and determine if it is related to password issues (such as forgetting, resetting, changing, or having problems with their password). Return "YES" if it is password-related, or "NO" if it is not password-related. Only respond with "YES" or "NO".`;
 
     try {
-      const response = await pollinationsService.queryText(prompt);
+      // Convert to proper chat format
+      const messages = [
+        {
+          role: 'system' as const,
+          content: `You are a professional customer support AI. Analyze the user's request and determine if it is related to password issues (such as forgetting, resetting, changing, or having problems with their password). Return "YES" if it is password-related, or "NO" if it is not password-related. Only respond with "YES" or "NO".`
+        },
+        {
+          role: 'user' as const,
+          content: `${chatHistoryContext}
+
+${prompt}`
+        }
+      ];
+
+      const response = await pollinationsService.queryChat(messages);
       return response.trim().toUpperCase() === 'YES';
     } catch (error) {
       console.error("Error determining password relation:", error);
@@ -609,7 +671,21 @@ You understand that the user is having trouble with their password. Provide a he
 Keep the response friendly, professional, and in Hinglish as appropriate for Indian customers.`;
 
     try {
-      const response = await pollinationsService.queryText(prompt);
+      // Convert to proper chat format
+      const messages = [
+        {
+          role: 'system' as const,
+          content: `You are a professional customer support AI. Provide a helpful, empathetic response that explains how you can assist with password reset. Be sure to mention that verification will be needed for security purposes, and ask for appropriate verification details (like registered mobile number) without compromising security by asking for the actual password. Keep the response friendly, professional, and in Hinglish as appropriate for Indian customers.`
+        },
+        {
+          role: 'user' as const,
+          content: `${chatHistoryContext}
+
+${prompt}`
+        }
+      ];
+
+      const response = await pollinationsService.queryChat(messages);
       return response;
     } catch (error) {
       console.error("Password response API error:", error);
@@ -640,7 +716,21 @@ ${chatHistoryContext}
 Generate a list of admin panel options that are available for customer care representatives. These should be actions that can be performed to assist users. Return the options as a numbered list. Options should include things like viewing account details, processing requests, managing user status, etc.`;
 
     try {
-      const response = await pollinationsService.queryText(prompt);
+      // Convert to proper chat format
+      const messages = [
+        {
+          role: 'system' as const,
+          content: `You are a professional customer support AI. Generate a list of admin panel options that are available for customer care representatives. These should be actions that can be performed to assist users. Return the options as a numbered list. Options should include things like viewing account details, processing requests, managing user status, etc.`
+        },
+        {
+          role: 'user' as const,
+          content: `${chatHistoryContext}
+
+${prompt}`
+        }
+      ];
+
+      const response = await pollinationsService.queryChat(messages);
       // Parse the response into an array of options
       const lines = response.split('\n').filter(line =>
         line.trim() && (line.startsWith('1.') || line.startsWith('2.') || line.startsWith('3.') ||
@@ -685,7 +775,34 @@ Analyze this request and determine what specific admin action is needed. Possibl
 Respond with just the action type that should be performed.`;
 
     try {
-      const actionResponse = await pollinationsService.queryText(actionPrompt);
+      // Convert to proper chat format
+      const actionMessages = [
+        {
+          role: 'system' as const,
+          content: `You are a professional customer support AI. Analyze the user's request and determine what specific admin action is needed. Possible actions:
+- BALANCE_ADJUSTMENT: For balance-related issues
+- WITHDRAWAL_APPROVAL: For approving withdrawals
+- WITHDRAWAL_REJECTION: For rejecting withdrawals
+- RECHARGE_APPROVAL: For approving recharges
+- PASSWORD_RESET: For resetting user passwords
+- ACCOUNT_ACTIVATION: For activating accounts
+- ACCOUNT_FREEZE: For freezing accounts
+- ACCOUNT_UNFREEZE: For unfreezing accounts
+- VIP_LEVEL_UPDATE: For updating VIP levels
+- REFERRAL_BONUS_UPDATE: For updating referral bonuses
+- TRANSACTION_STATUS_UPDATE: For updating transaction status
+
+Respond with just the action type that should be performed.`
+        },
+        {
+          role: 'user' as const,
+          content: `${chatHistoryContext}
+
+${actionPrompt}`
+        }
+      ];
+
+      const actionResponse = await pollinationsService.queryChat(actionMessages);
       const actionType = actionResponse.trim().toUpperCase();
 
       // Perform the appropriate admin action based on the analysis
@@ -766,7 +883,21 @@ The user has sent the following request: "${message}"
 
 You have processed their request in the background. Generate an appropriate response that confirms the issue has been resolved without revealing the internal admin processes. Make the response friendly, professional, and in Hinglish as appropriate for Indian customers. Focus on the positive outcome for the user.`;
 
-          const response = await pollinationsService.queryText(responsePrompt);
+          // Convert to proper chat format
+          const responseMessages = [
+            {
+              role: 'system' as const,
+              content: `You are a professional customer support AI. Generate an appropriate response that confirms the issue has been resolved without revealing the internal admin processes. Make the response friendly, professional, and in Hinglish as appropriate for Indian customers. Focus on the positive outcome for the user.`
+            },
+            {
+              role: 'user' as const,
+              content: `${chatHistoryContext}
+
+${responsePrompt}`
+            }
+          ];
+
+          const response = await pollinationsService.queryChat(responseMessages);
           resultMessage = response;
           break;
       }
@@ -781,7 +912,21 @@ The admin action has been completed successfully. The result was: "${resultMessa
 
 Create a user-friendly response that confirms the issue has been resolved. Do not reveal the internal admin processes or that you accessed the admin panel. Just confirm that their issue has been fixed and they can continue using the service. Make the response friendly, professional, and in Hinglish as appropriate for Indian customers.`;
 
-      const finalResponse = await pollinationsService.queryText(finalPrompt);
+      // Convert to proper chat format
+      const finalMessages = [
+        {
+          role: 'system' as const,
+          content: `You are a professional customer support AI. Create a user-friendly response that confirms the issue has been resolved. Do not reveal the internal admin processes or that you accessed the admin panel. Just confirm that their issue has been fixed and they can continue using the service. Make the response friendly, professional, and in Hinglish as appropriate for Indian customers.`
+        },
+        {
+          role: 'user' as const,
+          content: `${chatHistoryContext}
+
+${finalPrompt}`
+        }
+      ];
+
+      const finalResponse = await pollinationsService.queryChat(finalMessages);
       return { success, message: finalResponse };
     } catch (error) {
       console.error("Error processing admin action:", error);
