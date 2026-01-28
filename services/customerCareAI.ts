@@ -478,10 +478,30 @@ User's message: ${normalizedMessage}`
         }
 
         // Apply sentiment-based adjustments to the response
-        const sentimentAdjustedResponse = getSentimentBasedResponse(sentiment, response);
+        let sentimentAdjustedResponse = response; // Default to original response if sentiment analysis fails
+        try {
+          if (sentiment && response) {
+            sentimentAdjustedResponse = getSentimentBasedResponse(sentiment, response);
+          }
+        } catch (sentimentError) {
+          console.error("Error in sentiment analysis:", sentimentError);
+          // Use original response if sentiment analysis fails
+          sentimentAdjustedResponse = response;
+        }
 
         // Return response in user's preferred language
-        return getResponseInUserLanguage(message, sentimentAdjustedResponse);
+        let finalResponse = sentimentAdjustedResponse; // Default to sentiment-adjusted response
+        try {
+          if (message && sentimentAdjustedResponse) {
+            finalResponse = getResponseInUserLanguage(message, sentimentAdjustedResponse);
+          }
+        } catch (languageError) {
+          console.error("Error in language processing:", languageError);
+          // Use sentiment-adjusted response if language processing fails
+          finalResponse = sentimentAdjustedResponse;
+        }
+
+        return finalResponse;
       }
     } catch (error) {
       console.error("Pollinations API error:", error);
