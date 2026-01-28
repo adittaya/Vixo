@@ -36,65 +36,7 @@ export const pollinationsService = {
    * @returns The text response
    */
   async queryChat(messages: Array<{role: 'system' | 'user' | 'assistant', content: string}>): Promise<string> {
-    // Multiple fallback approach for API connectivity
-    console.log("Attempting to call Pollinations API with conversation history:", messages.length, "messages");
-
-    // Method 1: Try local server endpoint (for development and properly deployed apps)
-    if (typeof window !== 'undefined') {
-      console.log("Running in browser environment, attempting to call /api/ai/text with chat format");
-
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-        const response = await fetch('/api/ai/text', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messages,
-            model: "openai",
-            temperature: 0.2,
-            presence_penalty: 0.6,
-            frequency_penalty: 0.6,
-            max_tokens: 500
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        console.log("Local server response status:", response.status);
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Successfully received response from local server");
-          return data.text || data.choices?.[0]?.message?.content;
-        } else {
-          // Local server responded but with an error
-          let errorMessage = `Local server responded with status ${response.status}`;
-          try {
-            const errorData = await response.json();
-            if (errorData.error) {
-              errorMessage += ` - ${errorData.error}`;
-            }
-          } catch (e) {
-            try {
-              const errorText = await response.text();
-              errorMessage += ` - ${errorText}`;
-            } catch (textError) {
-              // Use status only
-            }
-          }
-          console.warn("Local server error, will try direct API call:", errorMessage);
-        }
-      } catch (localError) {
-        console.warn("Local server call failed, will try direct API call:", localError.message);
-      }
-    }
-
-    // Method 2: Try direct API call using the proper chat completions endpoint (may fail due to CORS in browsers, but works in Node.js)
+    // Attempt direct API call using the proper chat completions endpoint
     console.log("Attempting direct API call to external service using chat completions endpoint");
 
     try {
@@ -175,8 +117,6 @@ export const pollinationsService = {
       return responseText;
     } catch (directApiError) {
       console.error("Direct API call failed:", directApiError.message);
-      // If we're in browser and both methods failed, we propagate the error
-      // which will result in "Customer Care busy" as designed
       throw directApiError;
     }
   },
