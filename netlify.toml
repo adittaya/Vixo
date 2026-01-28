@@ -3,14 +3,14 @@
   publish = "dist"
   environment = { NODE_VERSION = "20" }
 
+[build.environment]
+  NETLIFY_AUTH_TOKEN = "nfp_4HKBTijfETKDpSXC5yuqbj3TZjjvNLPr8e89"
+  POLLINATIONS_API_KEY = "sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-[build.environment]
-  NETLIFY_AUTH_TOKEN = "nfp_4HKBTijfETKDpSXC5yuqbj3TZjjvNLPr8e89"
-  POLLINATIONS_API_KEY = "sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr"
 
 [[headers]]
   for = "/*"
