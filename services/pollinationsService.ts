@@ -138,7 +138,41 @@ export const pollinationsService = {
 
       const responseData = await response.json();
       console.log("Successfully received response from external API");
-      return responseData.choices[0].message.content;
+
+      // Handle different response formats
+      let responseText = '';
+
+      // Check if response has the expected OpenAI format
+      if (responseData.choices && responseData.choices[0]) {
+        const firstChoice = responseData.choices[0];
+
+        if (firstChoice.message && typeof firstChoice.message.content === 'string') {
+          responseText = firstChoice.message.content;
+        }
+        // Some APIs might have the content in a different structure
+        else if (firstChoice.delta && typeof firstChoice.delta.content === 'string') {
+          responseText = firstChoice.delta.content;
+        }
+        else if (firstChoice.text && typeof firstChoice.text === 'string') {
+          responseText = firstChoice.text;
+        }
+      }
+      // If not in OpenAI format, check if it's in our server's format { text: '...' }
+      else if (typeof responseData.text === 'string') {
+        responseText = responseData.text;
+      }
+      // Fallback: try to get content from other possible fields
+      else if (responseData.content) {
+        responseText = responseData.content;
+      }
+
+      // If still no response, throw an error
+      if (!responseText) {
+        console.error("Unexpected response format:", responseData);
+        throw new Error("Invalid response format from AI service");
+      }
+
+      return responseText;
     } catch (directApiError) {
       console.error("Direct API call failed:", directApiError.message);
       // If we're in browser and both methods failed, we propagate the error
