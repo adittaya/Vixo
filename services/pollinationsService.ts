@@ -32,10 +32,26 @@ export const pollinationsService = {
    */
   async queryText(prompt: string): Promise<string> {
     try {
-      // Check if we're in a Node.js environment (for tests) or browser
-      if (typeof window === 'undefined') {
-        // In Node.js environment, use the external API directly
-        // Using the original working format from server-ai.js
+      // In browser environment, we must use the local server due to CORS restrictions
+      // In Node.js environment, we can call the API directly
+      if (typeof window !== 'undefined') {
+        // Browser environment - use local server endpoint
+        const response = await fetch('/api/ai/text', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server responded with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.text;
+      } else {
+        // Node.js environment - call external API directly
         const encodedPrompt = encodeURIComponent(prompt);
         const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
         const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
@@ -52,22 +68,6 @@ export const pollinationsService = {
 
         const textResponse = await response.text();
         return textResponse;
-      } else {
-        // In browser environment, use the local server endpoint
-        const response = await fetch('/api/ai/text', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ prompt })
-        });
-
-        if (!response.ok) {
-          throw new Error(`Server responded with status ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.text;
       }
     } catch (error) {
       console.error("Error querying Pollinations text endpoint:", error);
