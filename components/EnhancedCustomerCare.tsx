@@ -119,7 +119,10 @@ const EnhancedCustomerCare: React.FC<EnhancedCustomerCareProps> = ({ user, isOpe
           }
         } catch (error) {
           console.error("Error with customer care AI:", error);
-          aiResponse = { text: "I'm having trouble connecting right now. Please try again in a moment." };
+          // Use the fixed customer care AI which will return "Customer Care busy" when API fails
+          const fallbackResponse = await customerCareAI.getResponse("Any message", user);
+          aiResponse = { text: fallbackResponse };
+
           if (usingHiddenAI) setUsingHiddenAI(false);
         }
       }

@@ -198,18 +198,8 @@ User's message: ${normalizedMessage}`;
       }
     } catch (error) {
       console.error("Pollinations API error:", error);
-      // Generate a dynamic error response using the AI
-      const errorPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
-
-There was an issue processing the user's request. Generate a helpful, empathetic response that acknowledges the issue and suggests trying again. Keep the response friendly and professional, in Hinglish as appropriate for Indian customers.`;
-
-      try {
-        const response = await pollinationsService.queryText(errorPrompt);
-        return response;
-      } catch (fallbackError) {
-        // Ultimate fallback if even the AI call fails
-        return "I'm here, but things are a bit busy right now. Please try again in a moment.";
-      }
+      // When API fails, show "Customer Care busy" message instead of fallback responses
+      return "Customer Care busy";
     }
   },
 
@@ -220,9 +210,14 @@ There was an issue processing the user's request. Generate a helpful, empathetic
    * @returns The complete AI response with image analysis
    */
   async analyzeImage(description: string, imageUrl: string): Promise<string> {
-    // Use custom AI agent with OCR + Pollinations processing
-    // Each image request is processed independently with no memory
-    return await customAIAgent.processUserInput({ text: description, imageUrl });
+    try {
+      // Use custom AI agent with OCR + Pollinations processing
+      // Each image request is processed independently with no memory
+      return await customAIAgent.processUserInput({ text: description, imageUrl });
+    } catch (error) {
+      console.error("Image analysis API error:", error);
+      return "Customer Care busy";
+    }
   },
 
   /**
@@ -231,9 +226,14 @@ There was an issue processing the user's request. Generate a helpful, empathetic
    * @returns The URL to the generated image
    */
   async generateImage(prompt: string): Promise<string> {
-    // Use the pollinations service directly for image generation
-    const { pollinationsService } = await import('./pollinationsService');
-    return await pollinationsService.generateImage(prompt);
+    try {
+      // Use the pollinations service directly for image generation
+      const { pollinationsService } = await import('./pollinationsService');
+      return await pollinationsService.generateImage(prompt);
+    } catch (error) {
+      console.error("Image generation API error:", error);
+      return "Customer Care busy";
+    }
   },
 
   /**
@@ -268,7 +268,7 @@ Analyze this request and determine if it requires verification for security purp
       const response = await pollinationsService.queryText(prompt);
       return response.trim().toUpperCase() === 'YES';
     } catch (error) {
-      console.error("Error determining verification requirement:", error);
+      console.error("Verification check API error:", error);
       // Conservative approach: if uncertain, assume verification is needed
       return message.toLowerCase().includes('withdraw') ||
              message.toLowerCase().includes('money') ||
@@ -293,11 +293,8 @@ Generate a helpful, friendly response that explains why verification is needed f
       const response = await pollinationsService.queryText(prompt);
       return response;
     } catch (error) {
-      console.error("Error generating verification request:", error);
-      // Fallback to a more generic response if AI call fails
-      return `For this request, verification is required for security purposes. Please provide the following:\n\n` +
-             `• Valid identification\n• Additional verification\n\n` +
-             `Once verified, I can assist you directly. Your security is our top priority.`;
+      console.error("Verification request API error:", error);
+      return "Customer Care busy";
     }
   },
 
@@ -354,11 +351,8 @@ Keep the response friendly, professional, and in Hinglish as appropriate for Ind
       const response = await pollinationsService.queryText(prompt);
       return response;
     } catch (error) {
-      console.error("Error generating password response:", error);
-      return "I understand you're having trouble with your password. Don't worry, I can help you with that directly. " +
-             "To assist you with resetting your password, I'll need some verification details. Could you please provide your registered mobile number " +
-             "and any other identifying information so I can look up your account and help reset your password securely? " +
-             "Mai aapki madad karne ke liye yahan hoon. Agar aap apna registered mobile number bata dein toh mai aapka account verify karke password reset karne mein madad kar sakti hoon.";
+      console.error("Password response API error:", error);
+      return "Customer Care busy";
     }
   },
 
@@ -388,19 +382,8 @@ Generate a list of admin panel options that are available for customer care repr
       // Clean up the lines to extract just the option text
       return lines.map(line => line.replace(/^\d+\.\s*/, '').trim()).filter(option => option);
     } catch (error) {
-      console.error("Error generating admin options:", error);
-      // Fallback to a basic list if AI call fails
-      return [
-        'View user account details',
-        'Reset user password',
-        'Approve withdrawal requests',
-        'Update account status',
-        'Process refunds',
-        'Manage VIP levels',
-        'Review transaction history',
-        'Suspend accounts',
-        'Generate reports'
-      ];
+      console.error("Admin options API error:", error);
+      return []; // Return empty array when API fails
     }
   },
 
@@ -534,7 +517,7 @@ Create a user-friendly response that confirms the issue has been resolved. Do no
       console.error("Error processing admin action:", error);
       return {
         success: false,
-        message: "I'm looking into your request and will get back to you shortly with a solution."
+        message: "Customer Care busy"
       };
     }
   }

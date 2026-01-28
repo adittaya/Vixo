@@ -50,12 +50,28 @@ const HiddenCustomerCare: React.FC<HiddenCustomerCareProps> = ({ isOpen, onClose
       setMessages(prev => [...prev, modelMsg]);
     } catch (error) {
       console.error('Error getting customer care response:', error);
-      const errorMsg: ChatMessage = {
-        role: 'model',
-        text: 'I encountered an error. Please try again later.',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMsg]);
+      // Instead of a static response, try to get a dynamic one
+      try {
+        const dynamicErrorPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+There was an issue processing the user's request. Generate a helpful, empathetic response that acknowledges the issue and suggests trying again. Keep the response friendly and professional, in Hinglish as appropriate for Indian customers. Do NOT say "I encountered an error. Please try again later." Instead, create a unique, helpful response.`;
+
+        const dynamicResponse = await customerCareAI.getResponse(dynamicErrorPrompt, user);
+        const dynamicMsg: ChatMessage = {
+          role: 'model',
+          text: dynamicResponse,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, dynamicMsg]);
+      } catch (dynamicError) {
+        console.error("Dynamic error response also failed:", dynamicError);
+        const errorMsg: ChatMessage = {
+          role: 'model',
+          text: 'Hi, this is Simran from VIXO. I\'m currently experiencing high traffic, but I\'m working on your request. Please try again in a few moments, and I\'ll make sure to assist you properly. Thanks for your patience!',
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, errorMsg]);
+      }
     } finally {
       setIsTyping(false);
     }

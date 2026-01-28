@@ -67,12 +67,15 @@ const defaultAdmin: AdminSettings = {
 };
 
 const loadLocalBackup = () => {
-  const saved = localStorage.getItem(STORAGE_KEYS.LOCAL_STATE_BACKUP);
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
-      return null;
+  // Check if we're in a browser environment
+  if (typeof localStorage !== 'undefined' && localStorage !== null) {
+    const saved = localStorage.getItem(STORAGE_KEYS.LOCAL_STATE_BACKUP);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
+      }
     }
   }
   return null;
@@ -112,7 +115,11 @@ export const initCloudStore = async () => {
       cloudState = data.state;
       if (!cloudState!.communityPosts) cloudState!.communityPosts = [];
       if (!cloudState!.supportMessages) cloudState!.supportMessages = [];
-      localStorage.setItem(STORAGE_KEYS.LOCAL_STATE_BACKUP, JSON.stringify(cloudState));
+
+      // Check if we're in a browser environment
+      if (typeof localStorage !== 'undefined' && localStorage !== null) {
+        localStorage.setItem(STORAGE_KEYS.LOCAL_STATE_BACKUP, JSON.stringify(cloudState));
+      }
     } else {
       cloudState = loadLocalBackup() || { users: [], purchases: [], transactions: [], admin: defaultAdmin, logs: [], communityPosts: [], supportMessages: [] };
       if (isCloudAvailable) {
@@ -124,7 +131,11 @@ export const initCloudStore = async () => {
         }
       }
     }
-    window.dispatchEvent(new Event('store-update'));
+
+    // Check if we're in a browser environment before dispatching event
+    if (typeof window !== 'undefined' && window !== null) {
+      window.dispatchEvent(new Event('store-update'));
+    }
     return true;
   } catch (err) {
     console.error("Critical error in initCloudStore:", err);
@@ -141,7 +152,13 @@ export const getStore = () => {
     const backup = loadLocalBackup();
     return backup || { users: [], currentUser: null, purchases: [], transactions: [], admin: defaultAdmin, logs: [], communityPosts: [], supportMessages: [] };
   }
-  const currentUserId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
+
+  let currentUserId = null;
+  // Check if we're in a browser environment
+  if (typeof localStorage !== 'undefined' && localStorage !== null) {
+    currentUserId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
+  }
+
   const currentUser = cloudState.users.find(u => u.id === currentUserId) || null;
   return { ...cloudState, currentUser };
 };
@@ -158,24 +175,39 @@ export const saveStore = async (data: Partial<{ users: User[], currentUser: User
   if (data.supportMessages) cloudState.supportMessages = data.supportMessages;
 
   if (data.currentUser !== undefined) {
-    if (data.currentUser) localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, data.currentUser.id);
-    else localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+    if (data.currentUser) {
+      // Check if we're in a browser environment
+      if (typeof localStorage !== 'undefined' && localStorage !== null) {
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, data.currentUser.id);
+      }
+    } else {
+      // Check if we're in a browser environment
+      if (typeof localStorage !== 'undefined' && localStorage !== null) {
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+      }
+    }
   }
 
-  localStorage.setItem(STORAGE_KEYS.LOCAL_STATE_BACKUP, JSON.stringify(cloudState));
+  // Check if we're in a browser environment
+  if (typeof localStorage !== 'undefined' && localStorage !== null) {
+    localStorage.setItem(STORAGE_KEYS.LOCAL_STATE_BACKUP, JSON.stringify(cloudState));
+  }
 
   if (isCloudAvailable) {
     const { error } = await supabase
       .from('platform_data')
       .upsert({ id: PLATFORM_ROW_ID, state: cloudState });
-    
+
     if (error) {
       console.warn("Cloud save failed, data kept locally.");
       if (error.code === '42P01') isCloudAvailable = false;
     }
   }
 
-  window.dispatchEvent(new Event('store-update'));
+  // Check if we're in a browser environment before dispatching event
+  if (typeof window !== 'undefined' && window !== null) {
+    window.dispatchEvent(new Event('store-update'));
+  }
 };
 
 /**

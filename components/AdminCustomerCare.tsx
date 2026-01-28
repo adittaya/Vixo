@@ -118,7 +118,18 @@ const AdminCustomerCare: React.FC<AdminCustomerCareProps> = ({ user, userId, isO
       }
     } catch (error) {
       console.error("Error with customer care AI:", error);
-      aiResponse = { text: "I'm having trouble connecting right now. Please try again in a moment." };
+      // Instead of a static response, try to get a dynamic one
+      try {
+        const dynamicErrorPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+There was an issue processing the user's request. Generate a helpful, empathetic response that acknowledges the issue and suggests trying again. Keep the response friendly and professional, in Hinglish as appropriate for Indian customers. Do NOT say "I'm having trouble connecting right now. Please try again in a moment." Instead, create a unique, helpful response.`;
+
+        const dynamicResponse = await customerCareAI.getResponse(dynamicErrorPrompt, user);
+        aiResponse = { text: dynamicResponse };
+      } catch (dynamicError) {
+        console.error("Dynamic error response also failed:", dynamicError);
+        aiResponse = { text: "Hi, this is Simran from VIXO. I'm currently experiencing high traffic, but I'm working on your request. Please try again in a few moments, and I'll make sure to assist you properly. Thanks for your patience!" };
+      }
     }
 
     try {

@@ -13,27 +13,27 @@ async function testAdminPanelAccess() {
   console.log('✓ Admin panel access check function works\n');
 
   console.log('2. Testing password-related query detection:');
-  console.log(`Password query detected: ${customerCareAI.isPasswordRelated("I forgot my password")}`);
-  console.log(`Non-password query detected: ${customerCareAI.isPasswordRelated("How are you?")}`);
+  console.log(`Password query detected: ${await customerCareAI.isPasswordRelated("I forgot my password")}`);
+  console.log(`Non-password query detected: ${await customerCareAI.isPasswordRelated("How are you?")}`);
   console.log('✓ Password-related query detection works\n');
 
   console.log('3. Testing verification requirement detection:');
-  console.log(`Withdrawal requires verification: ${customerCareAI.requiresVerification("I want to withdraw money")}`);
-  console.log(`General query requires verification: ${customerCareAI.requiresVerification("How are you?")}`);
+  console.log(`Withdrawal requires verification: ${await customerCareAI.requiresVerification("I want to withdraw money")}`);
+  console.log(`General query requires verification: ${await customerCareAI.requiresVerification("How are you?")}`);
   console.log('✓ Verification requirement detection works\n');
 
   console.log('4. Testing password response function:');
-  const passwordResponse = customerCareAI.getPasswordResponse();
+  const passwordResponse = await customerCareAI.getPasswordResponse();
   console.log(`Password response: ${passwordResponse}`);
   console.log('✓ Password response function works\n');
 
   console.log('5. Testing verification request function:');
-  const verificationResponse = customerCareAI.generateVerificationRequest("I want to withdraw money");
+  const verificationResponse = await customerCareAI.generateVerificationRequest("I want to withdraw money");
   console.log(`Verification request: ${verificationResponse}`);
   console.log('✓ Verification request function works\n');
 
   console.log('6. Testing admin panel options function:');
-  const adminOptions = customerCareAI.getAdminOptions(mockAdminUser);
+  const adminOptions = await customerCareAI.getAdminOptions(mockAdminUser);
   console.log(`Admin options: ${adminOptions.join(', ')}`);
   console.log('✓ Admin panel options function works\n');
 

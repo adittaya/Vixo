@@ -21,7 +21,7 @@ export const pollinationsService = {
       return imageUrl;
     } catch (error) {
       console.error("Error generating image with Pollinations:", error);
-      throw new Error("Image generation failed. Please try again.");
+      throw error;
     }
   },
 
@@ -32,27 +32,47 @@ export const pollinationsService = {
    */
   async queryText(prompt: string): Promise<string> {
     try {
-      // Query the Pollinations text endpoint with API key using the simple text endpoint
-      // As documented in the API: curl 'https://gen.pollinations.ai/text/hello?key=YOUR_API_KEY'
-      const encodedPrompt = encodeURIComponent(prompt);
-      const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
-      const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
+      // Check if we're in a Node.js environment (for tests) or browser
+      if (typeof window === 'undefined') {
+        // In Node.js environment, use the external API directly
+        // Using the original working format from server-ai.js
+        const encodedPrompt = encodeURIComponent(prompt);
+        const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
+        const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
 
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'text/plain',
+        const response = await fetch(url, {
+          headers: {
+            'Accept': 'text/plain',
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Pollinations API responded with status ${response.status}`);
         }
-      });
 
-      if (!response.ok) {
-        throw new Error(`Pollinations API responded with status ${response.status}`);
+        const textResponse = await response.text();
+        return textResponse;
+      } else {
+        // In browser environment, use the local server endpoint
+        const response = await fetch('/api/ai/text', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server responded with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.text;
       }
-
-      const textResponse = await response.text();
-      return textResponse;
     } catch (error) {
       console.error("Error querying Pollinations text endpoint:", error);
-      throw new Error("Text query failed. Please try again.");
+      // Don't throw an error, just re-throw it so the calling function can handle it
+      throw error;
     }
   },
 
@@ -82,7 +102,7 @@ export const pollinationsService = {
       return imageUrl;
     } catch (error) {
       console.error("Error generating image with Pollinations:", error);
-      throw new Error("Image generation failed. Please try again.");
+      throw error;
     }
   }
 };
