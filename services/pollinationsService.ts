@@ -31,15 +31,11 @@ export const pollinationsService = {
    * @returns The text response
    */
   async queryText(prompt: string): Promise<string> {
-    // Diagnostic version to help identify the issue
+    // Multiple fallback approach for API connectivity
     console.log("Attempting to call Pollinations API with prompt:", prompt.substring(0, 50) + "...");
 
-    // In browser environment, we must use the local server due to CORS restrictions
-    // In Node.js environment, we can call the API directly
+    // Method 1: Try local server endpoint (for development and properly deployed apps)
     if (typeof window !== 'undefined') {
-      // Browser environment - use local server endpoint
-      // In development, Vite proxy will forward /api/ai requests to the backend server
-      // In production, the API routes will be served from the same domain
       console.log("Running in browser environment, attempting to call /api/ai/text");
 
       try {
@@ -57,77 +53,75 @@ export const pollinationsService = {
 
         clearTimeout(timeoutId);
 
-        console.log("Response status:", response.status);
+        console.log("Local server response status:", response.status);
 
-        if (!response.ok) {
-          // Try to get error details from response
-          let errorMessage = `Server responded with status ${response.status}`;
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Successfully received response from local server");
+          return data.text;
+        } else {
+          // Local server responded but with an error
+          let errorMessage = `Local server responded with status ${response.status}`;
           try {
             const errorData = await response.json();
             if (errorData.error) {
               errorMessage += ` - ${errorData.error}`;
             }
           } catch (e) {
-            // If we can't parse the error response, use the status only
             try {
-              // Try to read as text if JSON parsing fails
               const errorText = await response.text();
               errorMessage += ` - ${errorText}`;
             } catch (textError) {
-              // If all parsing fails, just use status
+              // Use status only
             }
           }
-          console.error("Server error:", errorMessage);
-          throw new Error(errorMessage);
+          console.warn("Local server error, will try direct API call:", errorMessage);
         }
-
-        const data = await response.json();
-        console.log("Successfully received response from server");
-        return data.text;
-      } catch (error) {
-        console.error("Browser environment API call failed:", error.message);
-        throw error;
+      } catch (localError) {
+        console.warn("Local server call failed, will try direct API call:", localError.message);
       }
-    } else {
-      // Node.js environment - call external API directly
-      console.log("Running in Node.js environment, attempting to call external API");
-      const encodedPrompt = encodeURIComponent(prompt);
-      const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
-      const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
+    }
 
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    // Method 2: Try direct API call (may fail due to CORS in browsers, but works in Node.js)
+    console.log("Attempting direct API call to external service");
+    const encodedPrompt = encodeURIComponent(prompt);
+    const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
+    const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
 
-        const response = await fetch(url, {
-          headers: {
-            'Accept': 'text/plain',
-          },
-          signal: controller.signal
-        });
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-        clearTimeout(timeoutId);
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'text/plain',
+        },
+        signal: controller.signal
+      });
 
-        if (!response.ok) {
-          // Check for specific error statuses based on API spec
-          if (response.status === 401) {
-            throw new Error(`Authentication required. Please provide a valid API key. Status: ${response.status}`);
-          } else if (response.status === 402) {
-            throw new Error(`Insufficient pollen balance or API key budget exhausted. Status: ${response.status}`);
-          } else if (response.status === 403) {
-            throw new Error(`Access denied - insufficient permissions. Status: ${response.status}`);
-          } else {
-            throw new Error(`Pollinations API responded with status ${response.status}`);
-          }
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        // Check for specific error statuses based on API spec
+        if (response.status === 401) {
+          throw new Error(`Authentication required. Please provide a valid API key. Status: ${response.status}`);
+        } else if (response.status === 402) {
+          throw new Error(`Insufficient pollen balance or API key budget exhausted. Status: ${response.status}`);
+        } else if (response.status === 403) {
+          throw new Error(`Access denied - insufficient permissions. Status: ${response.status}`);
+        } else {
+          throw new Error(`Pollinations API responded with status ${response.status}`);
         }
-
-        const textResponse = await response.text();
-        console.log("Successfully received response from external API");
-        return textResponse;
-      } catch (error) {
-        console.error("External API call failed:", error.message);
-        throw error;
       }
+
+      const textResponse = await response.text();
+      console.log("Successfully received response from external API");
+      return textResponse;
+    } catch (directApiError) {
+      console.error("Direct API call failed:", directApiError.message);
+      // If we're in browser and both methods failed, we propagate the error
+      // which will result in "Customer Care busy" as designed
+      throw directApiError;
     }
   },
 
