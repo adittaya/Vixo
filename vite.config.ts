@@ -7,8 +7,20 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 3000,
+        port: 5173,  // Default Vite port to avoid conflict with backend
         host: '0.0.0.0',
+        proxy: {
+          '/api/ai': {
+            target: 'http://localhost:3000',  // Backend server
+            changeOrigin: true,
+            secure: false,
+          },
+          '/api/state': {
+            target: 'http://localhost:3000',  // Backend server
+            changeOrigin: true,
+            secure: false,
+          }
+        }
       },
       plugins: [react()],
       define: {

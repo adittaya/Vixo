@@ -36,12 +36,9 @@ export const pollinationsService = {
       // In Node.js environment, we can call the API directly
       if (typeof window !== 'undefined') {
         // Browser environment - use local server endpoint
-        // Make sure to use the correct server URL (port 3000 for the extended server)
-        const serverUrl = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development'
-          ? 'http://localhost:3000'
-          : '';
-
-        const response = await fetch(`${serverUrl}/api/ai/text`, {
+        // In development, Vite proxy will forward /api/ai requests to the backend server
+        // In production, the API routes will be served from the same domain
+        const response = await fetch('/api/ai/text', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
