@@ -17,7 +17,7 @@ export const customerCareAI = {
    * @param message - The customer's inquiry message
    * @returns The complete AI response
    */
-  async getResponse(message: string, user?: any): Promise<string> {
+  async getResponse(message: string, user?: any, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<string> {
     try {
       // Detect user's language
       const userLanguage = detectLanguage(message);
@@ -43,12 +43,20 @@ User Information:
 - Status: ${user.status}
 ` : '';
 
+      // Format chat history for context if available
+      const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+Recent Conversation History:
+${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+` : '';
+
       // First, analyze the user's request to determine if admin intervention is needed
       const analysisPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
 The user has sent this message: "${normalizedMessage}"
 
 ${userContext}
+
+${chatHistoryContext}
 
 Analyze this request and determine:
 1. What specific problem the user is facing
@@ -67,6 +75,8 @@ Possible admin actions:
 - VIP_LEVEL_UPDATE: For updating VIP levels
 - REFERRAL_BONUS_UPDATE: For updating referral bonuses
 - TRANSACTION_STATUS_UPDATE: For updating transaction status
+
+CRITICAL: Consider the conversation history when formulating your response. If the user is responding to a specific request you made (like asking for last 4 digits of phone number), respond appropriately to that context rather than treating it as a new, unrelated query.
 
 Respond with a JSON format:
 {
@@ -162,6 +172,9 @@ Important Guidelines:
 - The customer is communicating in ${userLanguage === 'hindi' ? 'Hindi' : 'English'}. Please respond in a respectful and culturally appropriate manner for Indian customers.
 - Use Hinglish (Hindi + English) when appropriate to make customers comfortable.
 - Stay focused on password change process only.
+- CRITICAL: Consider the conversation history when formulating your response. If the user is responding to a specific request you made (like asking for last 4 digits of phone number), respond appropriately to that context rather than treating it as a new, unrelated query.
+
+${chatHistoryContext}
 
 User's message: ${normalizedMessage}`;
               break;
@@ -198,8 +211,11 @@ Important Guidelines:
 - The customer is communicating in ${userLanguage === 'hindi' ? 'Hindi' : 'English'}. Please respond in a respectful and culturally appropriate manner for Indian customers.
 - Use Hinglish (Hindi + English) when appropriate to make customers comfortable.
 - Stay focused on balance information only.
+- CRITICAL: Consider the conversation history when formulating your response. If the user is responding to a specific request you made, respond appropriately to that context rather than treating it as a new, unrelated query.
 
 ${userContext}
+
+${chatHistoryContext}
 
 User's message: ${normalizedMessage}`;
               break;
@@ -236,6 +252,9 @@ Important Guidelines:
 - The customer is communicating in ${userLanguage === 'hindi' ? 'Hindi' : 'English'}. Please respond in a respectful and culturally appropriate manner for Indian customers.
 - Use Hinglish (Hindi + English) when appropriate to make customers comfortable.
 - Stay focused on withdrawal information only.
+- CRITICAL: Consider the conversation history when formulating your response. If the user is responding to a specific request you made, respond appropriately to that context rather than treating it as a new, unrelated query.
+
+${chatHistoryContext}
 
 User's message: ${normalizedMessage}`;
               break;
@@ -311,8 +330,11 @@ Important Guidelines:
 - If the user provides partial information (like just numbers), do not assume it relates to balances or other topics unless they explicitly mention it. If they're responding to your password change verification request, continue with the password change process.
 - Do not generate information about balances, transactions, or other account changes unless the user specifically asks about them.
 - When processing specific requests (like password changes), ignore user context details like balance, transaction history, etc. Focus solely on the requested procedure.
+- CRITICAL: Consider the conversation history when formulating your response. If the user is responding to a specific request you made, respond appropriately to that context rather than treating it as a new, unrelated query.
 
 ${userContext}
+
+${chatHistoryContext}
 
 User's message: ${normalizedMessage}`;
               break;
@@ -388,8 +410,11 @@ Important Guidelines:
 - If the user provides partial information (like just numbers), do not assume it relates to balances or other topics unless they explicitly mention it. If they're responding to your password change verification request, continue with the password change process.
 - Do not generate information about balances, transactions, or other account changes unless the user specifically asks about them.
 - When processing specific requests (like password changes), ignore user context details like balance, transaction history, etc. Focus solely on the requested procedure.
+- CRITICAL: Consider the conversation history when formulating your response. If the user is responding to a specific request you made, respond appropriately to that context rather than treating it as a new, unrelated query.
 
 ${userContext}
+
+${chatHistoryContext}
 
 User's message: ${normalizedMessage}`;
         }
@@ -415,7 +440,7 @@ User's message: ${normalizedMessage}`;
    * @param imageUrl - The URL or base64 data of the image to analyze
    * @returns The complete AI response with image analysis
    */
-  async analyzeImage(description: string, imageUrl: string): Promise<string> {
+  async analyzeImage(description: string, imageUrl: string, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<string> {
     try {
       // Use custom AI agent with OCR + Pollinations processing
       // Each image request is processed independently with no memory
@@ -431,7 +456,7 @@ User's message: ${normalizedMessage}`;
    * @param prompt - The image generation prompt
    * @returns The URL to the generated image
    */
-  async generateImage(prompt: string): Promise<string> {
+  async generateImage(prompt: string, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<string> {
     try {
       // Use the pollinations service directly for image generation
       const { pollinationsService } = await import('./pollinationsService');
@@ -463,10 +488,17 @@ User's message: ${normalizedMessage}`;
    * @param message - The user's inquiry message
    * @returns Boolean indicating if verification is required
    */
-  async requiresVerification(message: string): Promise<boolean> {
+  async requiresVerification(message: string, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<boolean> {
+    const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+Recent Conversation History:
+${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+` : '';
+
     const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
 The user has asked: "${message}"
+
+${chatHistoryContext}
 
 Analyze this request and determine if it requires verification for security purposes. Return "YES" if verification is required, or "NO" if it does not require verification. Only respond with "YES" or "NO".`;
 
@@ -488,10 +520,17 @@ Analyze this request and determine if it requires verification for security purp
    * @param message - The user's inquiry message
    * @returns Verification instructions
    */
-  async generateVerificationRequest(message: string): Promise<string> {
+  async generateVerificationRequest(message: string, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<string> {
+    const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+Recent Conversation History:
+${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+` : '';
+
     const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
 The user has made a request that requires verification: "${message}"
+
+${chatHistoryContext}
 
 Generate a helpful, friendly response that explains why verification is needed for security purposes, what specific information is required, and how the process will work. Keep the response professional and in Hinglish as appropriate for Indian customers. Emphasize that security is the top priority and that the verification is to protect their account.`;
 
@@ -518,12 +557,20 @@ Generate a helpful, friendly response that explains why verification is needed f
   /**
    * Check if a message is related to password issues
    * @param message - The user's inquiry message
+   * @param chatHistory - Optional chat history for context
    * @returns Boolean indicating if it's a password-related query
    */
-  async isPasswordRelated(message: string): Promise<boolean> {
+  async isPasswordRelated(message: string, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<boolean> {
+    const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+Recent Conversation History:
+${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+` : '';
+
     const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
 The user has asked: "${message}"
+
+${chatHistoryContext}
 
 Analyze this request and determine if it is related to password issues (such as forgetting, resetting, changing, or having problems with their password). Return "YES" if it is password-related, or "NO" if it is not password-related. Only respond with "YES" or "NO".`;
 
@@ -543,11 +590,19 @@ Analyze this request and determine if it is related to password issues (such as 
 
   /**
    * Generate response for password-related queries
+   * @param chatHistory - Optional chat history for context
    * @returns Appropriate response for password issues
    */
-  async getPasswordResponse(): Promise<string> {
+  async getPasswordResponse(chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<string> {
     // Instead of returning a fixed response, generate a dynamic response using the AI
+    const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+Recent Conversation History:
+${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+` : '';
+
     const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+${chatHistoryContext}
 
 You understand that the user is having trouble with their password. Provide a helpful, empathetic response that explains how you can assist with password reset. Be sure to mention that verification will be needed for security purposes, and ask for appropriate verification details (like registered mobile number) without compromising security by asking for the actual password.
 
@@ -565,14 +620,22 @@ Keep the response friendly, professional, and in Hinglish as appropriate for Ind
   /**
    * Get admin panel options for customer care representatives
    * @param user - The user object
+   * @param chatHistory - Optional chat history for context
    * @returns Available admin actions
    */
-  async getAdminOptions(user: any): Promise<string[]> {
+  async getAdminOptions(user: any, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<string[]> {
     if (!this.isAdmin(user)) {
       return [];
     }
 
+    const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+Recent Conversation History:
+${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+` : '';
+
     const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+${chatHistoryContext}
 
 Generate a list of admin panel options that are available for customer care representatives. These should be actions that can be performed to assist users. Return the options as a numbered list. Options should include things like viewing account details, processing requests, managing user status, etc.`;
 
@@ -597,9 +660,10 @@ Generate a list of admin panel options that are available for customer care repr
    * Process a user request using admin panel functionality
    * @param message - The user's request message
    * @param userId - The user's ID
+   * @param chatHistory - Optional chat history for context
    * @returns Result of the admin action
    */
-  async processUserRequest(message: string, userId: string): Promise<{success: boolean, message: string}> {
+  async processUserRequest(message: string, userId: string, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<{success: boolean, message: string}> {
     // Analyze the request to determine what admin action is needed
     const actionPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 

@@ -106,8 +106,8 @@ const EnhancedCustomerCare: React.FC<EnhancedCustomerCareProps> = ({ user, isOpe
             response = await customerCareAI.generateImage(lastUserText);
             aiResponse = { text: `I generated an image for you: [IMAGE_LINK]${response}[/IMAGE_LINK]` };
           } else {
-            // Get response from the customer care AI with personalized context
-            response = await customerCareAI.getResponse(userContext, user);
+            // Get response from the customer care AI with personalized context and chat history
+            response = await customerCareAI.getResponse(userContext, user, messages);
 
             // Check if the response contains admin commands (only when in hidden mode)
             if (usingHiddenAI && (response.toLowerCase().includes('admin:') || response.toLowerCase().includes('execute:'))) {
@@ -120,7 +120,7 @@ const EnhancedCustomerCare: React.FC<EnhancedCustomerCareProps> = ({ user, isOpe
         } catch (error) {
           console.error("Error with customer care AI:", error);
           // Use the fixed customer care AI which will return "Customer Care busy" when API fails
-          const fallbackResponse = await customerCareAI.getResponse("Any message", user);
+          const fallbackResponse = await customerCareAI.getResponse("Any message", user, messages);
           aiResponse = { text: fallbackResponse };
 
           if (usingHiddenAI) setUsingHiddenAI(false);
