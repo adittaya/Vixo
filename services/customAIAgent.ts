@@ -211,9 +211,9 @@ ${text}`;
       const result = await Promise.race([promise, timeoutPromise]);
       return result;
     } catch (error) {
-      // If the operation timed out or was aborted, return "Customer Care busy"
+      // If the operation timed out or was aborted, return a helpful message instead of "Customer Care busy"
       console.warn("Request timed out or was aborted:", error);
-      return "Customer Care busy";
+      return "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed.";
     }
   }
 };

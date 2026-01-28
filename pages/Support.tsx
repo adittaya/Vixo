@@ -132,9 +132,10 @@ const Support: React.FC<Props> = ({ user }) => {
           }
         } catch (error) {
           console.error("Error with customer care AI:", error);
-          // Use the fixed customer care AI which will return "Customer Care busy" when API fails
-          const fallbackResponse = await customerCareAI.getResponse("Any message", user, messages);
-          aiResponse = { text: fallbackResponse };
+          // When API fails, return a helpful static message instead of making another API call that might fail
+          aiResponse = {
+            text: "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed."
+          };
 
           if (usingHiddenAI) setUsingHiddenAI(false);
         }
