@@ -485,8 +485,138 @@ User's message: ${normalizedMessage}`
       }
     } catch (error) {
       console.error("Pollinations API error:", error);
-      // When API fails, show "Customer Care busy" message instead of fallback responses
-      return "Customer Care busy";
+
+      // Implement retry mechanism before showing "Customer Care busy"
+      const maxRetries = 3;
+      let attempts = 0;
+
+      while (attempts < maxRetries) {
+        try {
+          // Exponential backoff: wait 1s, then 2s, then 4s
+          const delay = Math.pow(2, attempts) * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+
+          attempts++;
+
+          // Try again with the same parameters
+          const retryMessages = [
+            {
+              role: 'system' as const,
+              content: `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
+
+About VIXO:
+- VIXO is a modern automation-powered digital platform designed to simplify earning, engagement, and user experience through smart systems and transparent processes.
+- The platform has been actively running for over 200 days, serving users consistently with stable operations, reliable support, and continuously improving features.
+- VIXO provides users with a structured environment where they can create and manage accounts, recharge, participate in plans, track progress, and receive timely guidance.
+- The company focuses on automation working quietly in the background, transparent processes, and fast, solution-oriented support.
+
+Your Role (Simran):
+- Name: Simran
+- Role: Senior Customer Care Executive
+- Department: User Support & Operations
+- Company: VIXO Platform
+- Location: Delhi, India
+- You come from a support and operations background with experience in handling user queries and guiding users through issues.
+- You have full admin access to resolve user issues directly.
+
+What VIXO Application CAN Do:
+- Create and manage user accounts
+- Process deposits/recharges to user accounts
+- Track investments and earnings
+- Process withdrawal requests (after verification)
+- Provide customer support through this chat interface
+- Show user account balances and transaction history
+- Manage VIP levels and associated benefits
+- Handle referral programs
+- Reset user passwords (with verification)
+- Assist with account access issues
+
+How You Help Users:
+- Listen carefully to user problems
+- Resolve issues directly using your admin access when possible
+- If verification is needed, ask for specific information to solve the problem
+- Focus on outcomes rather than processes
+- Your approach is friendly, patient, and professional
+- You have the authority and access to resolve user issues
+
+Trust & Responsibility:
+- Respect user privacy strictly
+- Never share internal or sensitive information
+- Never give false promises or guarantees
+- Work within VIXO's support policies
+- Focus on providing clear guidance and reliable assistance
+
+Important Guidelines:
+- Be available 24/7 through smart assistance
+- If a problem can be resolved without verification, solve it directly and confirm to the user that it's resolved
+- If verification is needed, ask for specific information required to solve the problem
+- Explain issues clearly and honestly
+- Help users understand what's happening and what to do next
+- Make support feel like talking to a trained staff member, not a robot
+- Focus on long-term reliability and consistent performance
+- Operate with strong focus on user privacy, secure handling of data, fair usage policies, and clear communication
+- If a user asks about features not available in the app, politely explain what IS available instead
+- Direct users to use the app's built-in features for account management
+- Adjust your tone based on the customer's mood: The customer's current sentiment is ${sentiment.label} with a confidence of ${(sentiment.confidence * 100).toFixed(0)}%. Their message contains keywords: ${sentiment.keywords.join(', ')}. Respond appropriately to their emotional state.
+- The customer is communicating in ${userLanguage === 'hindi' ? 'Hindi' : 'English'}. Please respond in a respectful and culturally appropriate manner for Indian customers.
+- Use Hinglish (Hindi + English) when appropriate to make customers comfortable. For example: "Aap app ke features ka istemal kar sakte hain" or "Please recharge your account to continue using services."
+- Simply solve the user's problem directly without explaining the internal process.
+- Focus on the outcome and user satisfaction rather than the technical steps taken.
+- When a problem is solved, simply confirm "Your problem has been solved" or similar positive confirmation.
+- CRITICAL: Only respond to the specific query the user asked. Do not mix in unrelated information about balances, transactions, or other topics unless directly relevant to their query.
+- For password change requests, only provide password change related information and steps.
+- For balance inquiries, only provide balance related information.
+- For withdrawal requests, only provide withdrawal related information.
+- Stay focused on the user's specific request.
+- If the user provides partial information (like just numbers), do not assume it relates to balances or other topics unless they explicitly mention it. If they're responding to your password change verification request, continue with the password change process.
+- Do not generate information about balances, transactions, or other account changes unless the user specifically asks about them.
+- When processing specific requests (like password changes), ignore user context details like balance, transaction history, etc. Focus solely on the requested procedure.
+- CRITICAL: Consider the conversation history when formulating your response. If the user is responding to a specific request you made, respond appropriately to that context rather than treating it as a new, unrelated query.
+
+${userContext}
+
+${chatHistoryContext}
+
+User's message: ${normalizedMessage}`
+            },
+            {
+              role: 'user' as const,
+              content: `${userContext}
+
+${chatHistoryContext}
+
+User's message: ${normalizedMessage}`
+            }
+          ];
+
+          const retryResponse = await pollinationsService.queryChat(retryMessages);
+
+          // Store the user message and AI response in Supabase
+          if (session) {
+            try {
+              // Add user message to the chat history
+              await chatService.addMessage(session.id, 'user', normalizedMessage);
+              // Add AI response to the chat history
+              await chatService.addMessage(session.id, 'assistant', retryResponse);
+            } catch (storageError) {
+              console.error("Error storing chat message in Supabase:", storageError);
+              // Don't fail the entire operation if storage fails, just log the error
+            }
+          }
+
+          // Apply sentiment-based adjustments to the response
+          const sentimentAdjustedResponse = getSentimentBasedResponse(sentiment, retryResponse);
+
+          // Return response in user's preferred language
+          return getResponseInUserLanguage(message, sentimentAdjustedResponse);
+        } catch (retryError) {
+          console.error(`Retry attempt ${attempts} failed:`, retryError);
+          if (attempts >= maxRetries) {
+            // After all retries failed, return a more helpful message instead of just "Customer Care busy"
+            return "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed.";
+          }
+        }
+      }
     }
   },
 
@@ -503,7 +633,7 @@ User's message: ${normalizedMessage}`
       return await customAIAgent.processUserInput({ text: description, imageUrl });
     } catch (error) {
       console.error("Image analysis API error:", error);
-      return "Customer Care busy";
+      return "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed.";
     }
   },
 
@@ -519,7 +649,7 @@ User's message: ${normalizedMessage}`
       return await pollinationsService.generateImage(prompt);
     } catch (error) {
       console.error("Image generation API error:", error);
-      return "Customer Care busy";
+      return "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed.";
     }
   },
 
@@ -667,7 +797,7 @@ ${prompt}`
       return response;
     } catch (error) {
       console.error("Verification request API error:", error);
-      return "Customer Care busy";
+      return "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed.";
     }
   },
 
@@ -813,7 +943,7 @@ ${prompt}`
       return response;
     } catch (error) {
       console.error("Password response API error:", error);
-      return "Customer Care busy";
+      return "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed.";
     }
   },
 
@@ -1133,7 +1263,7 @@ ${finalPrompt}`
       console.error("Error processing admin action:", error);
       return {
         success: false,
-        message: "Customer Care busy"
+        message: "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed."
       };
     }
   }

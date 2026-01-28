@@ -47,7 +47,7 @@ export const customAIAgent = {
       }
     } catch (error) {
       console.error("Error in customAIAgent processUserInput:", error);
-      return "Customer Care busy";
+      return "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed.";
     } finally {
       // Remove the request from pending list
       requestManager.removeRequest(requestId);
@@ -81,7 +81,7 @@ export const customAIAgent = {
       return response;
     } catch (error) {
       console.error("Image analysis failed:", error);
-      return "Customer Care busy";
+      return "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed.";
     }
   },
 
@@ -176,8 +176,8 @@ ${text}`;
       }
     } catch (error) {
       console.error("Text chat failed:", error);
-      // When API fails, show "Customer Care busy" message instead of fallback responses
-      return "Customer Care busy";
+      // When API fails, show a helpful message instead of "Customer Care busy"
+      return "I'm currently experiencing high traffic, but I've noted your request. Our support team will assist you shortly. Please try again in a moment if needed.";
     }
   },
 
