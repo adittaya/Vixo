@@ -4,6 +4,7 @@ import { detectLanguage, getResponseInUserLanguage, normalizeForProcessing } fro
 import { adminPanelService } from './adminPanelService';
 import { customAIAgent } from './customAIAgent';
 import { intentClassifier } from './intentClassifier';
+import { chatService } from './chatService';
 
 /**
  * Customer Care AI Service
@@ -28,6 +29,28 @@ export const customerCareAI = {
       // Analyze sentiment of the user's message
       const sentiment = analyzeSentimentAdvanced(normalizedMessage);
 
+      // Get user's chat session from Supabase
+      let session;
+      if (user) {
+        session = await chatService.getOrCreateSession(user.id);
+      }
+
+      // Get chat history from Supabase if available
+      let supabaseChatHistory: Array<{role: string, content: string}> = [];
+      if (session) {
+        supabaseChatHistory = await chatService.getChatHistory(session.id);
+      }
+
+      // Combine Supabase history with any passed history
+      const combinedHistory = [
+        ...supabaseChatHistory.map(msg => ({
+          sender: msg.role,
+          text: msg.content,
+          timestamp: new Date(msg.created_at).getTime()
+        })),
+        ...(chatHistory || [])
+      ];
+
       // Format the message for Pollinations API with detailed VIXO training
       // Include user context if available
       const userContext = user ? `
@@ -44,9 +67,9 @@ User Information:
 ` : '';
 
       // Format chat history for context if available
-      const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+      const chatHistoryContext = combinedHistory && combinedHistory.length > 0 ? `
 Recent Conversation History:
-${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+${combinedHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
 ` : '';
 
       // First, analyze the user's request to determine if admin intervention is needed
@@ -441,6 +464,19 @@ User's message: ${normalizedMessage}`
 
         const response = await pollinationsService.queryChat(messages);
 
+        // Store the user message and AI response in Supabase
+        if (session) {
+          try {
+            // Add user message to the chat history
+            await chatService.addMessage(session.id, 'user', normalizedMessage);
+            // Add AI response to the chat history
+            await chatService.addMessage(session.id, 'assistant', response);
+          } catch (storageError) {
+            console.error("Error storing chat message in Supabase:", storageError);
+            // Don't fail the entire operation if storage fails, just log the error
+          }
+        }
+
         // Apply sentiment-based adjustments to the response
         const sentimentAdjustedResponse = getSentimentBasedResponse(sentiment, response);
 
@@ -508,10 +544,32 @@ User's message: ${normalizedMessage}`
    * @param message - The user's inquiry message
    * @returns Boolean indicating if verification is required
    */
-  async requiresVerification(message: string, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<boolean> {
-    const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+  async requiresVerification(message: string, user?: any, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<boolean> {
+    // Get user's chat session from Supabase
+    let session;
+    if (user) {
+      session = await chatService.getOrCreateSession(user.id);
+    }
+
+    // Get chat history from Supabase if available
+    let supabaseChatHistory: Array<{role: string, content: string}> = [];
+    if (session) {
+      supabaseChatHistory = await chatService.getChatHistory(session.id);
+    }
+
+    // Combine Supabase history with any passed history
+    const combinedHistory = [
+      ...supabaseChatHistory.map(msg => ({
+        sender: msg.role,
+        text: msg.content,
+        timestamp: new Date(msg.created_at).getTime()
+      })),
+      ...(chatHistory || [])
+    ];
+
+    const chatHistoryContext = combinedHistory && combinedHistory.length > 0 ? `
 Recent Conversation History:
-${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+${combinedHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
 ` : '';
 
     const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
@@ -554,10 +612,32 @@ ${prompt}`
    * @param message - The user's inquiry message
    * @returns Verification instructions
    */
-  async generateVerificationRequest(message: string, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<string> {
-    const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+  async generateVerificationRequest(message: string, user?: any, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<string> {
+    // Get user's chat session from Supabase
+    let session;
+    if (user) {
+      session = await chatService.getOrCreateSession(user.id);
+    }
+
+    // Get chat history from Supabase if available
+    let supabaseChatHistory: Array<{role: string, content: string}> = [];
+    if (session) {
+      supabaseChatHistory = await chatService.getChatHistory(session.id);
+    }
+
+    // Combine Supabase history with any passed history
+    const combinedHistory = [
+      ...supabaseChatHistory.map(msg => ({
+        sender: msg.role,
+        text: msg.content,
+        timestamp: new Date(msg.created_at).getTime()
+      })),
+      ...(chatHistory || [])
+    ];
+
+    const chatHistoryContext = combinedHistory && combinedHistory.length > 0 ? `
 Recent Conversation History:
-${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+${combinedHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
 ` : '';
 
     const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
@@ -608,10 +688,32 @@ ${prompt}`
    * @param chatHistory - Optional chat history for context
    * @returns Boolean indicating if it's a password-related query
    */
-  async isPasswordRelated(message: string, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<boolean> {
-    const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+  async isPasswordRelated(message: string, user?: any, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<boolean> {
+    // Get user's chat session from Supabase
+    let session;
+    if (user) {
+      session = await chatService.getOrCreateSession(user.id);
+    }
+
+    // Get chat history from Supabase if available
+    let supabaseChatHistory: Array<{role: string, content: string}> = [];
+    if (session) {
+      supabaseChatHistory = await chatService.getChatHistory(session.id);
+    }
+
+    // Combine Supabase history with any passed history
+    const combinedHistory = [
+      ...supabaseChatHistory.map(msg => ({
+        sender: msg.role,
+        text: msg.content,
+        timestamp: new Date(msg.created_at).getTime()
+      })),
+      ...(chatHistory || [])
+    ];
+
+    const chatHistoryContext = combinedHistory && combinedHistory.length > 0 ? `
 Recent Conversation History:
-${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+${combinedHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
 ` : '';
 
     const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
@@ -655,11 +757,33 @@ ${prompt}`
    * @param chatHistory - Optional chat history for context
    * @returns Appropriate response for password issues
    */
-  async getPasswordResponse(chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<string> {
+  async getPasswordResponse(user?: any, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<string> {
+    // Get user's chat session from Supabase
+    let session;
+    if (user) {
+      session = await chatService.getOrCreateSession(user.id);
+    }
+
+    // Get chat history from Supabase if available
+    let supabaseChatHistory: Array<{role: string, content: string}> = [];
+    if (session) {
+      supabaseChatHistory = await chatService.getChatHistory(session.id);
+    }
+
+    // Combine Supabase history with any passed history
+    const combinedHistory = [
+      ...supabaseChatHistory.map(msg => ({
+        sender: msg.role,
+        text: msg.content,
+        timestamp: new Date(msg.created_at).getTime()
+      })),
+      ...(chatHistory || [])
+    ];
+
     // Instead of returning a fixed response, generate a dynamic response using the AI
-    const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+    const chatHistoryContext = combinedHistory && combinedHistory.length > 0 ? `
 Recent Conversation History:
-${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+${combinedHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
 ` : '';
 
     const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
@@ -704,9 +828,31 @@ ${prompt}`
       return [];
     }
 
-    const chatHistoryContext = chatHistory && chatHistory.length > 0 ? `
+    // Get user's chat session from Supabase
+    let session;
+    if (user) {
+      session = await chatService.getOrCreateSession(user.id);
+    }
+
+    // Get chat history from Supabase if available
+    let supabaseChatHistory: Array<{role: string, content: string}> = [];
+    if (session) {
+      supabaseChatHistory = await chatService.getChatHistory(session.id);
+    }
+
+    // Combine Supabase history with any passed history
+    const combinedHistory = [
+      ...supabaseChatHistory.map(msg => ({
+        sender: msg.role,
+        text: msg.content,
+        timestamp: new Date(msg.created_at).getTime()
+      })),
+      ...(chatHistory || [])
+    ];
+
+    const chatHistoryContext = combinedHistory && combinedHistory.length > 0 ? `
 Recent Conversation History:
-${chatHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+${combinedHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
 ` : '';
 
     const prompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
@@ -753,11 +899,40 @@ ${prompt}`
    * @param chatHistory - Optional chat history for context
    * @returns Result of the admin action
    */
-  async processUserRequest(message: string, userId: string, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<{success: boolean, message: string}> {
+  async processUserRequest(message: string, userId: string, user?: any, chatHistory?: Array<{sender: string, text: string, timestamp: number}>): Promise<{success: boolean, message: string}> {
+    // Get user's chat session from Supabase
+    let session;
+    if (user) {
+      session = await chatService.getOrCreateSession(user.id);
+    }
+
+    // Get chat history from Supabase if available
+    let supabaseChatHistory: Array<{role: string, content: string}> = [];
+    if (session) {
+      supabaseChatHistory = await chatService.getChatHistory(session.id);
+    }
+
+    // Combine Supabase history with any passed history
+    const combinedHistory = [
+      ...supabaseChatHistory.map(msg => ({
+        sender: msg.role,
+        text: msg.content,
+        timestamp: new Date(msg.created_at).getTime()
+      })),
+      ...(chatHistory || [])
+    ];
+
+    const chatHistoryContext = combinedHistory && combinedHistory.length > 0 ? `
+Recent Conversation History:
+${combinedHistory.slice(-5).map(msg => `- ${msg.sender}: ${msg.text}`).join('\n')}
+` : '';
+
     // Analyze the request to determine what admin action is needed
     const actionPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
 The user has sent the following request: "${message}"
+
+${chatHistoryContext}
 
 Analyze this request and determine what specific admin action is needed. Possible actions:
 - BALANCE_ADJUSTMENT: For balance-related issues
@@ -772,7 +947,15 @@ Analyze this request and determine what specific admin action is needed. Possibl
 - REFERRAL_BONUS_UPDATE: For updating referral bonuses
 - TRANSACTION_STATUS_UPDATE: For updating transaction status
 
-Respond with just the action type that should be performed.`;
+CRITICAL: Consider the conversation history when formulating your response. If the user is responding to a specific request you made (like asking for last 4 digits of phone number), respond appropriately to that context rather than treating it as a new, unrelated query.
+
+Respond with a JSON format:
+{
+  "needsAdminAction": true/false,
+  "adminAction": "action_type",
+  "actionDetails": "specific details needed for the action",
+  "responseToUser": "what to tell the user"
+}`;
 
     try {
       // Convert to proper chat format
@@ -879,6 +1062,8 @@ ${actionPrompt}`
           // For other types of requests, generate a response using the AI
           const responsePrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
+${chatHistoryContext}
+
 The user has sent the following request: "${message}"
 
 You have processed their request in the background. Generate an appropriate response that confirms the issue has been resolved without revealing the internal admin processes. Make the response friendly, professional, and in Hinglish as appropriate for Indian customers. Focus on the positive outcome for the user.`;
@@ -908,6 +1093,8 @@ ${responsePrompt}`
       // Generate final response to the user
       const finalPrompt = `You are Simran, a Senior Customer Care Executive from Delhi, India, working for VIXO Platform.
 
+${chatHistoryContext}
+
 The admin action has been completed successfully. The result was: "${resultMessage}"
 
 Create a user-friendly response that confirms the issue has been resolved. Do not reveal the internal admin processes or that you accessed the admin panel. Just confirm that their issue has been fixed and they can continue using the service. Make the response friendly, professional, and in Hinglish as appropriate for Indian customers.`;
@@ -927,6 +1114,20 @@ ${finalPrompt}`
       ];
 
       const finalResponse = await pollinationsService.queryChat(finalMessages);
+
+      // Store the admin action and response in Supabase
+      if (session) {
+        try {
+          // Add admin action to the chat history
+          await chatService.addMessage(session.id, 'user', `Admin action: ${message}`);
+          // Add AI response to the chat history
+          await chatService.addMessage(session.id, 'assistant', finalResponse);
+        } catch (storageError) {
+          console.error("Error storing admin action in Supabase:", storageError);
+          // Don't fail the entire operation if storage fails, just log the error
+        }
+      }
+
       return { success, message: finalResponse };
     } catch (error) {
       console.error("Error processing admin action:", error);
