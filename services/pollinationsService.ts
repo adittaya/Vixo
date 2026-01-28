@@ -112,10 +112,14 @@ export const pollinationsService = {
         messages: messages
       };
 
+      // Extract the API key from the URL and use it in the Authorization header
+      const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`  // Use Authorization header instead of query parameter
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal

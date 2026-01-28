@@ -67,11 +67,12 @@ app.post("/api/ai/text", async (req, res) => {
         messages: messages
       };
 
-      const url = `${BASE}/v1/chat/completions?key=${KEY}`;
+      const url = `${BASE}/v1/chat/completions`;
       const r = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${KEY}`
         },
         body: JSON.stringify(requestBody)
       });
