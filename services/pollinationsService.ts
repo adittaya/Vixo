@@ -63,7 +63,16 @@ export const pollinationsService = {
         });
 
         if (!response.ok) {
-          throw new Error(`Pollinations API responded with status ${response.status}`);
+          // Check for specific error statuses based on API spec
+          if (response.status === 401) {
+            throw new Error(`Authentication required. Please provide a valid API key. Status: ${response.status}`);
+          } else if (response.status === 402) {
+            throw new Error(`Insufficient pollen balance or API key budget exhausted. Status: ${response.status}`);
+          } else if (response.status === 403) {
+            throw new Error(`Access denied - insufficient permissions. Status: ${response.status}`);
+          } else {
+            throw new Error(`Pollinations API responded with status ${response.status}`);
+          }
         }
 
         const textResponse = await response.text();
