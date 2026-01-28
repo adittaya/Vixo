@@ -1,9 +1,9 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  environment = { NODE_VERSION = "20" }
 
 [build.environment]
+  NODE_VERSION = "20"
   NETLIFY_AUTH_TOKEN = "nfp_4HKBTijfETKDpSXC5yuqbj3TZjjvNLPr8e89"
   POLLINATIONS_API_KEY = "sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr"
 
