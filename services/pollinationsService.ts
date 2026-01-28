@@ -106,9 +106,7 @@ export const pollinationsService = {
       const requestBody = {
         model: "openai",
         temperature: 0.2,
-        presence_penalty: 0.6,
-        frequency_penalty: 0.6,
-        max_tokens: 500,
+        max_tokens: 300,  // Reduced to prevent full reasoning consumption
         messages: messages
       };
 
