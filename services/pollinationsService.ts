@@ -96,8 +96,6 @@ export const pollinationsService = {
 
     // Method 2: Try direct API call using the proper chat completions endpoint (may fail due to CORS in browsers, but works in Node.js)
     console.log("Attempting direct API call to external service using chat completions endpoint");
-    const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
-    const url = `https://gen.pollinations.ai/v1/chat/completions?key=${apiKey}`;
 
     try {
       const controller = new AbortController();
@@ -110,14 +108,14 @@ export const pollinationsService = {
         messages: messages
       };
 
-      // Extract the API key from the URL and use it in the Authorization header
-      const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
+      // Use the API key from environment variable if available, otherwise use the hardcoded one
+      const apiKey = process.env.POLLINATIONS_API_KEY || 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
+      const url = `https://gen.pollinations.ai/v1/chat/completions?key=${apiKey}`;
 
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`  // Use Authorization header instead of query parameter
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal

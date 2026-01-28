@@ -49,7 +49,7 @@ app.post('/api/state', (req, res) => {
 });
 
 // Pollinations AI Endpoints
-const KEY = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
+const KEY = process.env.POLLINATIONS_API_KEY || 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Use env var or fallback
 const BASE = "https://gen.pollinations.ai";
 
 app.post("/api/ai/text", async (req, res) => {
@@ -142,7 +142,8 @@ app.post("/api/ai/text", async (req, res) => {
       res.json({ text });
     }
   } catch (e) {
-    res.status(500).json({ error: "AI busy, try again" });
+    console.error('AI API Error:', e.message);
+    res.status(500).json({ error: "AI busy, try again", details: e.message });
   }
 });
 
@@ -158,7 +159,8 @@ app.post("/api/ai/image", async (req, res) => {
     res.setHeader("Content-Type", "image/jpeg");
     res.send(buf);
   } catch (e) {
-    res.status(500).json({ error: "AI busy, try again" });
+    console.error('AI Image API Error:', e.message);
+    res.status(500).json({ error: "AI busy, try again", details: e.message });
   }
 });
 
