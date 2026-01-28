@@ -38,13 +38,19 @@ export const pollinationsService = {
         // Browser environment - use local server endpoint
         // In development, Vite proxy will forward /api/ai requests to the backend server
         // In production, the API routes will be served from the same domain
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
         const response = await fetch('/api/ai/text', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ prompt })
+          body: JSON.stringify({ prompt }),
+          signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           // Try to get error details from response
@@ -68,11 +74,17 @@ export const pollinationsService = {
         const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
         const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
         const response = await fetch(url, {
           headers: {
             'Accept': 'text/plain',
-          }
+          },
+          signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           // Check for specific error statuses based on API spec
