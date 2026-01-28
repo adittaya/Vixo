@@ -31,99 +31,104 @@ export const pollinationsService = {
    * @returns The text response
    */
   async queryText(prompt: string): Promise<string> {
-    // Retry mechanism for failed requests
-    const maxRetries = 3;
-    let lastError;
+    // Diagnostic version to help identify the issue
+    console.log("Attempting to call Pollinations API with prompt:", prompt.substring(0, 50) + "...");
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // In browser environment, we must use the local server due to CORS restrictions
+    // In Node.js environment, we can call the API directly
+    if (typeof window !== 'undefined') {
+      // Browser environment - use local server endpoint
+      // In development, Vite proxy will forward /api/ai requests to the backend server
+      // In production, the API routes will be served from the same domain
+      console.log("Running in browser environment, attempting to call /api/ai/text");
+
       try {
-        // In browser environment, we must use the local server due to CORS restrictions
-        // In Node.js environment, we can call the API directly
-        if (typeof window !== 'undefined') {
-          // Browser environment - use local server endpoint
-          // In development, Vite proxy will forward /api/ai requests to the backend server
-          // In production, the API routes will be served from the same domain
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-          const response = await fetch('/api/ai/text', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ prompt }),
-            signal: controller.signal
-          });
+        const response = await fetch('/api/ai/text', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt }),
+          signal: controller.signal
+        });
 
-          clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-          if (!response.ok) {
-            // Try to get error details from response
-            let errorMessage = `Server responded with status ${response.status}`;
+        console.log("Response status:", response.status);
+
+        if (!response.ok) {
+          // Try to get error details from response
+          let errorMessage = `Server responded with status ${response.status}`;
+          try {
+            const errorData = await response.json();
+            if (errorData.error) {
+              errorMessage += ` - ${errorData.error}`;
+            }
+          } catch (e) {
+            // If we can't parse the error response, use the status only
             try {
-              const errorData = await response.json();
-              if (errorData.error) {
-                errorMessage += ` - ${errorData.error}`;
-              }
-            } catch (e) {
-              // If we can't parse the error response, use the status only
-            }
-            throw new Error(errorMessage);
-          }
-
-          const data = await response.json();
-          return data.text;
-        } else {
-          // Node.js environment - call external API directly
-          const encodedPrompt = encodeURIComponent(prompt);
-          const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
-          const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
-
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-          const response = await fetch(url, {
-            headers: {
-              'Accept': 'text/plain',
-            },
-            signal: controller.signal
-          });
-
-          clearTimeout(timeoutId);
-
-          if (!response.ok) {
-            // Check for specific error statuses based on API spec
-            if (response.status === 401) {
-              throw new Error(`Authentication required. Please provide a valid API key. Status: ${response.status}`);
-            } else if (response.status === 402) {
-              throw new Error(`Insufficient pollen balance or API key budget exhausted. Status: ${response.status}`);
-            } else if (response.status === 403) {
-              throw new Error(`Access denied - insufficient permissions. Status: ${response.status}`);
-            } else {
-              throw new Error(`Pollinations API responded with status ${response.status}`);
+              // Try to read as text if JSON parsing fails
+              const errorText = await response.text();
+              errorMessage += ` - ${errorText}`;
+            } catch (textError) {
+              // If all parsing fails, just use status
             }
           }
-
-          const textResponse = await response.text();
-          return textResponse;
+          console.error("Server error:", errorMessage);
+          throw new Error(errorMessage);
         }
+
+        const data = await response.json();
+        console.log("Successfully received response from server");
+        return data.text;
       } catch (error) {
-        lastError = error;
-        console.error(`Attempt ${attempt} failed:`, error.message);
+        console.error("Browser environment API call failed:", error.message);
+        throw error;
+      }
+    } else {
+      // Node.js environment - call external API directly
+      console.log("Running in Node.js environment, attempting to call external API");
+      const encodedPrompt = encodeURIComponent(prompt);
+      const apiKey = 'sk_aRMDlzZq5H1go5NrbWA7rD0c1l95W0Gr'; // Provided API key
+      const url = `https://gen.pollinations.ai/text/${encodedPrompt}?key=${apiKey}`;
 
-        // If this is not the last attempt, wait before retrying
-        if (attempt < maxRetries) {
-          // Exponential backoff: wait 1s, then 2s, then 4s
-          const delay = Math.pow(2, attempt) * 1000;
-          console.log(`Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        const response = await fetch(url, {
+          headers: {
+            'Accept': 'text/plain',
+          },
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          // Check for specific error statuses based on API spec
+          if (response.status === 401) {
+            throw new Error(`Authentication required. Please provide a valid API key. Status: ${response.status}`);
+          } else if (response.status === 402) {
+            throw new Error(`Insufficient pollen balance or API key budget exhausted. Status: ${response.status}`);
+          } else if (response.status === 403) {
+            throw new Error(`Access denied - insufficient permissions. Status: ${response.status}`);
+          } else {
+            throw new Error(`Pollinations API responded with status ${response.status}`);
+          }
         }
+
+        const textResponse = await response.text();
+        console.log("Successfully received response from external API");
+        return textResponse;
+      } catch (error) {
+        console.error("External API call failed:", error.message);
+        throw error;
       }
     }
-
-    // If all retries failed, throw the last error
-    console.error("All retry attempts failed. Throwing the last error:", lastError);
-    throw lastError;
   },
 
   /**
